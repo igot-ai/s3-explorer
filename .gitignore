@@ -1,0 +1,5 @@
+.env
+.DS_Store
+.pythonlibs
+.upm
+.__pycache__
