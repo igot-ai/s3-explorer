@@ -56,3 +56,53 @@ C4 Level 2: Container Diagram
 |                                                                        |
 +------------------------------------------------------------------------+
 ---
+
+Component Interaction Flow
+[S3 Source Path]
+       |
+       v
++------------------+
+| SourceConnector  |  --> Lists all folders/files recursively
++--------+---------+
+         |
+         v
++------------------+
+| FolderTracker    |  --> Creates FolderContext for each top-level folder
++--------+---------+
+         |
+    +----+----+
+    |         |
+    v         v
++-------+  +----------+
+| .docx |  | .zip/.rar|
++---+---+  +----+-----+
+    |           |
+    v           v
++----------------+  +------------------+
+| FileConverter  |  | ArchiveExtractor |
+| (DOCX->PDF)    |  | (patool)         |
++-------+--------+  +---------+--------+
+        |                     |
+        +----------+----------+
+                   |
+                   v
+          +--------+--------+
+          | DocumentReader  |  --> Extract first 3 pages text
+          +--------+--------+
+                   |
+                   v
+          +--------+--------+
+          |   Classifier    |  --> LLM classifies to catalog.id
+          +--------+--------+
+                   |
+                   v
+          +--------+---------+
+          | MetadataExtractor|  --> Extract catalog.metadata_scan fields
+          +--------+---------+
+                   |
+                   v
+          +--------+---------+
+          | CollectionHandler|  --> Upload to an APIProvider to manage collection
+          +------------------+
+---
+
