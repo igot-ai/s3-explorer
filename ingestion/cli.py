@@ -16,10 +16,8 @@ from ingestion.connectors.s3_connector import S3SourceConnector
 from ingestion.processors.base import FileProcessorChain
 from ingestion.processors.converter import DocxToPdfConverter
 from ingestion.processors.extractor import ArchiveExtractor, SimpleZipExtractor
-from ingestion.readers.pymupdf_reader import PyMuPDFReader
-from ingestion.readers.pdfplumber_reader import PDFPlumberReader
+from ingestion.readers.markitdown_reader import MarkitdownReader
 from ingestion.classifiers.llm_classifier import LLMClassifier
-from ingestion.handlers.s3_handler import S3CollectionHandler
 from ingestion.handlers.api_handler import DataCollectionAPIHandler
 from ingestion.connectors import get_storage_provider
 
@@ -69,46 +67,22 @@ def create_pipeline(config: IngestionConfig, catalogs: CatalogRegistry) -> Inges
     processor_chain = FileProcessorChain(processors)
     
     # Create document reader
-    if config.reader_type == "pymupdf":
-        document_reader = PyMuPDFReader()
-        logger.info("Using PyMuPDF reader")
-    elif config.reader_type == "pdfplumber":
-        document_reader = PDFPlumberReader()
-        logger.info("Using pdfplumber reader")
-    else:
-        document_reader = PyMuPDFReader()  # Default
-        logger.info("Using default PyMuPDF reader")
+    document_reader = MarkitdownReader()
     
-    # Create unified LLM classifier
-    if config.classifier_type not in ["openai", "anthropic", "ollama", "azure"]:
-        raise ValueError(f"Unknown classifier type: {config.classifier_type}")
-    
-    # API key required for cloud providers
-    if config.classifier_type in ["openai", "anthropic", "azure"] and not config.classifier_api_key:
-        raise ValueError(f"{config.classifier_type.upper()} API key required")
-    
-    classifier = LLMClassifier(
-        provider=config.classifier_type,
-        model=config.classifier_model,
-        api_key=config.classifier_api_key,
-        base_url=config.api_base_url if config.classifier_type == "ollama" else None
-    )
+    classifier = LLMClassifier()
     logger.info(f"Using {config.classifier_type} classifier with model: {classifier.model}")
     
     # Create collection handler
-    if config.handler_type == "s3":
-        collection_handler = S3CollectionHandler(storage_provider)
-        logger.info("Using S3 collection handler")
-    elif config.handler_type == "api":
-        if not config.api_base_url:
-            raise ValueError("API base URL required for API handler")
-        collection_handler = DataCollectionAPIHandler(
-            api_base_url=config.api_base_url,
-            api_key=config.api_key
-        )
-        logger.info(f"Using API collection handler: {config.api_base_url}")
-    else:
-        raise ValueError(f"Unknown handler type: {config.handler_type}")
+    if not config.api_base_url:
+        raise ValueError("API base URL required for API handler")
+
+    collection_handler = DataCollectionAPIHandler(
+        workspace_id="igotai",
+        project_id="31ad152d-0a91-48f6-b8f4-d335db1ad441",
+        auth_token="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjIxNjAxNDJiLThmYWItNDA4Ny1hODQ3LThiNDAwY2I4YmRkZiIsImVtYWlsIjoibnRuaGFuMjFAY2xjLmZpdHVzLmVkdS52biIsIndvcmtzcGFjZV9pZCI6Imlnb3RhaSIsImp3dF9pZCI6IjBhMTQ3OWJkLTZjMjktNDgwOS1hMzA5LWM1MDk1NzZiY2EyNCIsImFwcF9wZXJtaXNzaW9ucyI6WyJjYXRhbG9nIiwic3R1ZGlvIl0sImV4cCI6MTc2NTk0NDk4MH0.ZbheI_OuCULOa_qsvE7fDeii8Rse0moCnJ2Ck4lbhmw"
+    )
+    logger.info(f"Using API collection handler: {config.api_base_url}")
+
     
     # Create callbacks for progress tracking
     def on_file_processed(file_ctx: FileContext):
@@ -173,6 +147,7 @@ def main():
         # Load configuration
         if args.config:
             config_path = Path(args.config)
+            logger.info(f"Config path: {config_path}")
             if config_path.suffix in ['.yaml', '.yml']:
                 config = IngestionConfig.from_yaml(str(config_path))
             else:

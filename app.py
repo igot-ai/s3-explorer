@@ -11,6 +11,7 @@ import secrets
 import json
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 import re
+from ingestion.routers import ingestion_bp
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -29,6 +30,10 @@ app.config['WTF_CSRF_CHECK_DEFAULT'] = False  # Disable default CSRF checking
 # Initialize CSRF protection
 csrf = CSRFProtect()
 csrf.init_app(app)
+
+# Register blueprints
+app.register_blueprint(ingestion_bp)
+csrf.exempt(ingestion_bp)
 
 @app.before_request
 def before_request():

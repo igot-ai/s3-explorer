@@ -2,7 +2,11 @@
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
+from pydantic import BaseModel
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class FileStatus(Enum):
@@ -38,6 +42,16 @@ class Catalog:
             raise ValueError("Catalog id cannot be empty")
         if not self.information:
             raise ValueError("Catalog information cannot be empty")
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert catalog to dictionary."""
+        return {
+            "id": self.id,
+            "information": self.information,
+            "content": self.content,
+            "fetch_all_metadata": self.fetch_all_metadata,
+            "metadata_scan": self.metadata_scan,
+        }
 
 
 @dataclass
@@ -129,21 +143,14 @@ class IngestionJobConfig:
         return None
 
 
-@dataclass
-class ClassificationResult:
+class ClassificationResult(BaseModel):
     """Result of document classification.
     
     Contains the classified catalog and confidence information.
     """
-    catalog_id: str
-    confidence: float
-    reasoning: str
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
-    def __post_init__(self):
-        """Validate classification result."""
-        if self.confidence < 0.0 or self.confidence > 1.0:
-            raise ValueError("Confidence must be between 0.0 and 1.0")
+    category_id: str
+    confidence: int  # 1-5 scale
+    reason: str
 
 
 @dataclass

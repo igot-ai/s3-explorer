@@ -6,7 +6,7 @@ import asyncio
 import hashlib
 import logging
 import time
-from typing import Dict, Any, BinaryIO, Optional
+from typing import Dict, Any, BinaryIO, Optional, List
 from uuid import UUID
 
 import httpx
@@ -243,11 +243,11 @@ class DatalogService:
 
         return await self._post(url, json_data=payload, extra_headers=extra_headers)
 
-    async def get_table(
+    async def exists_table(
         self,
         table_id: str,
         extra_headers: Optional[Dict[str, str]] = None,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> bool:
         """Get a catalog table by ID.
 
         Args:
@@ -255,25 +255,25 @@ class DatalogService:
             extra_headers: Optional additional headers
 
         Returns:
-            Table details as dict if it exists, None if not found
+            True if table exists, False if not found
         """
         if not table_id:
-            return None
+            return False
 
-        url = f"/tables/{table_id}"
+        url = f"/tables/{table_id}/json"
 
         try:
             resp = await self._get(url, extra_headers=extra_headers)
             if resp.status_code == 200:
-                return resp.json()
+                return True
             elif resp.status_code == 404:
-                return None
+                return False
             else:
                 resp.raise_for_status()
-                return None
+                return False
         except Exception as e:
             logger.warning(f"Error getting table {table_id}: {e}")
-            return None
+            return False
 
     async def create_table(
         self,
@@ -589,8 +589,8 @@ class DataCollectionAPIHandler(APICollectionHandler):
         self.workspace_id = workspace_id
         self.project_id = project_id
         self._service = DatalogService(auth_token=auth_token, base_url=base_url)
-        self._catalog_to_table_id: Dict[str, str] = {}  # Map catalog.id -> table_id
         self._authenticated = True  # Token-based auth is always "authenticated"
+        self._catalog_ids_with_assets: set[str] = set()  # Track catalogs with uploaded assets
 
     def __del__(self):
         """Cleanup async client on destruction."""
@@ -623,6 +623,10 @@ class DataCollectionAPIHandler(APICollectionHandler):
             # No event loop exists, create one
             return asyncio.run(coro)
 
+    def reset_catalog_assets(self) -> None:
+        """Clear tracked catalog IDs that have uploaded assets."""
+        self._catalog_ids_with_assets.clear()
+
     def authenticate(self) -> None:
         """Authenticate with Datalog API.
         
@@ -639,7 +643,7 @@ class DataCollectionAPIHandler(APICollectionHandler):
         """
         return self._authenticated
 
-    def get_collection(self, catalog_id: str) -> Optional[Dict]:
+    def exists_collection(self, collection_id: str) -> bool:
         """Retrieve collection (table) details by catalog ID.
         
         Args:
@@ -648,21 +652,10 @@ class DataCollectionAPIHandler(APICollectionHandler):
         Returns:
             Table details dictionary or None if not found
         """
-        try:
-            # Check if we have a cached table_id mapping
-            table_id = self._catalog_to_table_id.get(catalog_id)
-            if table_id:
-                table = self._run_async(self._service.get_table(table_id))
-                if table:
-                    return table
+        if collection_id:
+            return self._run_async(self._service.exists_table(collection_id))
+        return False
             
-            # If not found, return None (collection doesn't exist yet)
-            return None
-            
-        except Exception as e:
-            logger.error(f"Error getting collection: {str(e)}")
-            return None
-
     def create_collection(self, catalog: Catalog) -> Dict:
         """Create a new collection (table) from a catalog definition.
         
@@ -672,80 +665,7 @@ class DataCollectionAPIHandler(APICollectionHandler):
         Returns:
             Created table details
         """
-        try:
-            # Ensure project exists
-            if not self.project_id:
-                # Create a default project if none exists
-                # Use catalog.id as part of project name
-                project_name = f"proj_{catalog.id[:10]}"  # Limit length
-                project = self._run_async(
-                    self._service.create_project(
-                        name=project_name,
-                        workspace_id=self.workspace_id,
-                        description=catalog.content or f"Project for catalog {catalog.id}",
-                    )
-                )
-                self.project_id = project.get("id")
-                logger.info(f"Created Datalog project: {self.project_id}")
-
-            # Create table for this catalog
-            table = self._run_async(
-                self._service.create_table(
-                    project_id=self.project_id,
-                    name=catalog.id,
-                    description=catalog.content or catalog.information,
-                    table_type="TABLE",
-                    model_transform="FLASH",
-                )
-            )
-            
-            table_id = table.get("id")
-            if not table_id:
-                raise ValueError("Failed to create table: missing table_id")
-            
-            # Cache the mapping
-            self._catalog_to_table_id[catalog.id] = table_id
-            
-            # Create columns from metadata_scan if provided
-            if catalog.metadata_scan:
-                columns = []
-                for field_name, field_config in catalog.metadata_scan.items():
-                    if isinstance(field_config, dict):
-                        column_config = {
-                            "name": field_name,
-                            "data_type": field_config.get("type", "text"),
-                            "content_location": field_config.get("content_location", "top-left"),
-                            "scan_ranges": field_config.get("scan_ranges", ["all"]),
-                        }
-                        if "prompt_template" in field_config:
-                            column_config["prompt_template"] = field_config["prompt_template"]
-                    else:
-                        # Simple string or type specification
-                        column_config = {
-                            "name": field_name,
-                            "data_type": str(field_config) if field_config else "text",
-                            "scan_ranges": ["all"],
-                        }
-                    columns.append(column_config)
-                
-                if columns:
-                    try:
-                        self._run_async(
-                            self._service.create_columns_bulk(
-                                table_id=table_id,
-                                columns=columns,
-                            )
-                        )
-                        logger.info(f"Created {len(columns)} columns for catalog {catalog.id}")
-                    except Exception as col_err:
-                        logger.warning(f"Failed to create columns: {col_err}")
-            
-            logger.info(f"Created collection: {catalog.id} -> table {table_id}")
-            return table
-            
-        except Exception as e:
-            logger.error(f"Error creating collection: {str(e)}")
-            raise
+        raise NotImplementedError("Creating collections is not supported in this class since user have to create collection first")
 
     def update_collection_metadata(
         self,
@@ -769,6 +689,17 @@ class DataCollectionAPIHandler(APICollectionHandler):
         logger.warning("Datalog doesn't support direct metadata updates on collections")
         return False
 
+    def get_collection(self, collection_id: str) -> Dict:
+        """Get collection details by collection ID.
+        
+        Args:
+            collection_id: ID of the collection
+            
+        Returns:
+            Collection details dictionary
+        """
+        raise NotImplementedError("Datalog is not supported the API call to get collection details")
+
     def upload(
         self,
         file_context: FileContext,
@@ -789,19 +720,10 @@ class DataCollectionAPIHandler(APICollectionHandler):
         """
         try:
             # Ensure collection (table) exists
-            table_id = self._catalog_to_table_id.get(catalog.id)
-            if not table_id:
-                collection = self.get_collection(catalog.id)
-                if not collection:
-                    logger.info(f"Collection {catalog.id} not found, creating...")
-                    collection = self.create_collection(catalog)
-                    table_id = collection.get("id")
-                else:
-                    table_id = collection.get("id")
-                    self._catalog_to_table_id[catalog.id] = table_id
-            
-            if not table_id:
-                raise ValueError(f"Failed to get or create table for catalog {catalog.id}")
+            is_collection_exists = self.exists_collection(catalog.id)
+
+            if not is_collection_exists:
+                raise ValueError(f"Collection {catalog.id} does not exist")
             
             # Read file content
             file_bytes = file_stream.read()
@@ -809,28 +731,48 @@ class DataCollectionAPIHandler(APICollectionHandler):
             # Determine content type
             content_type = self._guess_content_type(file_context.source_path)
             
-            # Extract plain text if available
-            plain_text = file_context.extracted_text or ""
-            
             # Upload asset
             result = self._run_async(
                 self._service.upload_asset(
-                    table_id=table_id,
+                    table_id=catalog.id,
                     file_bytes=file_bytes,
                     filename=file_context.source_path.split('/')[-1],
                     content_type=content_type,
-                    plain_text=plain_text,
+                    plain_text=None,
                     source_id=file_context.source_path,
                 )
             )
             
-            asset_id = result.get("id") or result.get("asset_id")
+            uploaded_files = result.get("uploaded_files") or []
+            if isinstance(uploaded_files, list):
+                filename = file_context.source_path.split("/")[-1]
+                
+                def _pick_asset(files: list[Dict[str, Any]]) -> Optional[str]:
+                    # Prefer the file that matches the uploaded filename
+                    for item in files:
+                        if not isinstance(item, dict):
+                            continue
+                        if item.get("asset_id") and item.get("filename") == filename:
+                            return item.get("asset_id")
+                    # Fall back to the first entry that exposes an asset identifier
+                    for item in files:
+                        if not isinstance(item, dict):
+                            continue
+                        if item.get("asset_id") or item.get("id"):
+                            return item.get("asset_id") or item.get("id")
+                    return None
+                
+                asset_id = _pick_asset(uploaded_files)
+            
             if not asset_id:
-                raise ValueError("Upload response missing asset_id")
+                raise ValueError(f"Upload response missing asset_id (response keys: {list(result.keys())})")
+            
+            # Track this catalog as having uploaded assets
+            self._catalog_ids_with_assets.add(catalog.id)
             
             logger.info(
                 f"Uploaded {file_context.source_path} to catalog {catalog.id}, "
-                f"table {table_id}, asset ID: {asset_id}"
+                f"collection {catalog.id}, asset ID: {asset_id}"
             )
             return asset_id
             
@@ -880,7 +822,7 @@ class DataCollectionAPIHandler(APICollectionHandler):
         Returns:
             Datalog API endpoint path
         """
-        table_id = self._catalog_to_table_id.get(catalog.id, "unknown")
+        table_id = catalog.id or "unknown"
         return f"{self.base_url}/tables/{table_id}/assets"
 
     def _guess_content_type(self, file_path: str) -> str:
@@ -895,3 +837,74 @@ class DataCollectionAPIHandler(APICollectionHandler):
         import mimetypes
         content_type, _ = mimetypes.guess_type(file_path)
         return content_type or "application/octet-stream"
+
+    def aggregate_metadata(self, catalogs: List[Catalog]) -> bool:
+        """Trigger transformation for catalogs that have uploaded assets.
+        
+        Uses internal tracking of uploaded catalogs (`self._catalog_ids_with_assets`)
+        and processes them sequentially. Catalogs with fetch_all_metadata=True
+        are processed last.
+        """
+        if not catalogs:
+            logger.warning("No catalogs provided for transformation")
+            return False
+        
+        if not self.project_id:
+            logger.error("No project_id configured for triggering transformation")
+            return False
+        
+        if not self._catalog_ids_with_assets:
+            logger.info("No catalogs with uploaded assets to trigger transformation")
+            return True
+        
+        catalogs_to_process = [
+            c for c in catalogs if c.id in self._catalog_ids_with_assets
+        ]
+        if not catalogs_to_process:
+            logger.info("No matching catalogs with uploaded assets found")
+            return True
+        
+        # Sort catalogs: fetch_all_metadata=False first, fetch_all_metadata=True last
+        sorted_catalogs = sorted(
+            catalogs_to_process, key=lambda c: c.fetch_all_metadata
+        )
+        
+        logger.info(
+            f"Triggering transformation for {len(sorted_catalogs)} catalogs "
+            f"(order: {[c.id for c in sorted_catalogs]})"
+        )
+        
+        success = True
+        for catalog in sorted_catalogs:
+            try:
+                if not catalog.id:
+                    logger.warning("Catalog missing id, skipping transformation")
+                    continue
+                
+                # Verify collection exists before triggering transformation
+                if not self.exists_collection(catalog.id):
+                    logger.warning(
+                        f"Collection {catalog.id} does not exist, skipping transformation"
+                    )
+                    continue
+                
+                result = self._run_async(
+                    self._service.trigger_transformation(
+                        project_id=self.project_id,
+                        table_id=catalog.id,
+                    )
+                )
+                logger.info(
+                    f"Triggered transformation for catalog {catalog.id} "
+                    f"(fetch_all_metadata={catalog.fetch_all_metadata}): {result}"
+                )
+                
+            except Exception as e:
+                logger.error(
+                    f"Error triggering transformation for catalog {catalog.id}: {e}"
+                )
+                success = False
+        
+        # Clear processed catalogs to avoid duplicate triggering
+        self._catalog_ids_with_assets.clear()
+        return success

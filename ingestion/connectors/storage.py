@@ -298,16 +298,29 @@ class DigitalOceanSpacesProvider(S3CompatibleProvider):
             raise ValueError(f"Failed to initialize DigitalOcean Spaces client: {str(e)}")
 
 class CloudflareR2Provider(S3CompatibleProvider):
-    """Cloudflare R2 provider (S3 compatible) using s3fs
+    """Cloudflare R2 provider (S3 compatible) using s3fs.
     Authentication:
     - Account ID (Cloudflare specific)
     - Access Key ID
     - Secret Access Key
     - Bucket Name
-    No region needed - uses 'auto'
+    Region is optional and ignored (R2 uses 'auto')
     """
-    def __init__(self, account_id: str, access_key: str, secret_key: str, bucket: str):
+    def __init__(
+        self,
+        account_id: str,
+        access_key: str,
+        secret_key: str,
+        bucket: str,
+        region: Optional[str] = None,
+    ):
         endpoint_url = f'https://{account_id}.r2.cloudflarestorage.com'
+
+        if region and region != "auto":
+            logger.debug(
+                "Cloudflare R2 ignores region '%s'; using 'auto' instead",
+                region,
+            )
 
         # Initialize s3fs filesystem for all operations
         fs = s3fs.S3FileSystem(

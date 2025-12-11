@@ -35,7 +35,7 @@ ingestion/                           # Self-contained ingestion module
 │   ├── pymupdf_reader.py           # PyMuPDF (fast, images)
 │   └── pdfplumber_reader.py        # pdfplumber (tables)
 ├── classifiers/
-│   ├── base.py                     # Classifier + MetadataExtractor interfaces
+│   ├── base.py                     # Classifier interface
 │   └── llm_classifier.py           # Unified LLM gateway (OpenAI/Anthropic/Ollama/Azure)
 ├── handlers/
 │   ├── base.py                     # CollectionHandler + APICollectionHandler interfaces
@@ -66,7 +66,7 @@ ingestion/                           # Self-contained ingestion module
 ### Design Patterns Applied
 - **Strategy Pattern**: Pluggable LLM classifiers, document readers, storage providers
 - **Chain of Responsibility**: FileProcessorChain for flexible file routing
-- **Template Method**: `build_classification_prompt()` and `build_metadata_prompt()`
+- **Template Method**: `LLMClassifier.build_classification_prompt()`
 - **Factory Pattern**: `get_storage_provider()`, component creation
 - **Observer Pattern**: Callbacks for progress tracking
 - **Repository Pattern**: CatalogRegistry for catalog management

@@ -1,8 +1,8 @@
 """Abstract base class for collection handlers."""
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, BinaryIO, Optional
-from ..core.models import FileContext, Catalog, FolderContext
+from typing import Dict, Any, BinaryIO, Optional, List
+from ingestion.core.models import FileContext, Catalog, FolderContext
 
 
 class CollectionHandler(ABC):
@@ -171,4 +171,22 @@ class APICollectionHandler(CollectionHandler):
             True if authenticated, False otherwise
         """
         return False
+
+    @abstractmethod
+    def aggregate_metadata(
+        self,
+        catalogs: List[Catalog],
+    ) -> bool:
+        """Aggregate metadata for a collection.
+        
+        Args:
+            catalogs: List of target catalogs/collections
+            catalog_ids_with_assets: Optional list of catalog IDs that have uploaded assets.
+                                     If provided, only trigger for these catalogs.
+                                     If None, trigger for all provided catalogs.
+            
+        Returns:
+            True if all transformations were triggered successfully, False otherwise
+        """
+        pass    
 

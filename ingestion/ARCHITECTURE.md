@@ -187,13 +187,12 @@ LLMClassifier(Classifier)
   
   Methods:
   ├── classify(text, catalogs) -> ClassificationResult
-  ├── extract_metadata(text, catalog) -> Dict[str, Any]
   ├── find_catalog(catalog_id, text, catalogs) -> (Catalog, metadata)
   └── _generate(prompt, temperature, max_tokens) -> str
 ```
 
 **Metadata Extraction:**
-Included in `Classifier` base class - no separate `MetadataExtractor` needed. Uses the same LLM for both classification and metadata extraction.
+Optional; current classifier focuses on catalog selection and can be extended for metadata if needed.
 
 ### 6. Handlers Layer (`ingestion/handlers/`)
 

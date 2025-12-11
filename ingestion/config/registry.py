@@ -90,7 +90,7 @@ class CatalogRegistry:
         Args:
             file_path: Path to JSON file
         """
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
         self.clear()
@@ -106,7 +106,7 @@ class CatalogRegistry:
         Args:
             file_path: Path to YAML file
         """
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding='utf-8') as f:
             data = yaml.safe_load(f)
         
         self.clear()
@@ -136,7 +136,7 @@ class CatalogRegistry:
             ]
         }
         
-        with open(file_path, 'w') as f:
+        with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2)
 
     def save_to_yaml(self, file_path: str) -> None:
@@ -159,7 +159,7 @@ class CatalogRegistry:
             ]
         }
         
-        with open(file_path, 'w') as f:
+        with open(file_path, 'w', encoding='utf-8') as f:
             yaml.dump(data, f, default_flow_style=False)
 
     def __len__(self) -> int:

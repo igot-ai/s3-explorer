@@ -24,9 +24,11 @@ class IngestionConfig:
     temp_dir: Optional[str] = None
     
     # Classifier settings
-    classifier_type: str = "openai"  # openai, anthropic, ollama
+    classifier_type: str = "openai"  # openai, anthropic, ollama, azure
     classifier_model: str = ""
     classifier_api_key: Optional[str] = None
+    classifier_api_base_url: Optional[str] = None
+    classifier_api_version: Optional[str] = None
     
     # Handler settings
     handler_type: str = "s3"  # s3, api
@@ -83,12 +85,35 @@ class IngestionConfig:
             classifier_type=os.getenv('INGESTION_CLASSIFIER_TYPE', 'openai'),
             classifier_model=os.getenv('INGESTION_CLASSIFIER_MODEL', ''),
             classifier_api_key=os.getenv('INGESTION_CLASSIFIER_API_KEY'),
+            classifier_api_base_url=os.getenv('INGESTION_CLASSIFIER_API_BASE_URL'),
+            classifier_api_version=os.getenv('INGESTION_CLASSIFIER_API_VERSION'),
             handler_type=os.getenv('INGESTION_HANDLER_TYPE', 's3'),
             api_base_url=os.getenv('INGESTION_API_BASE_URL'),
             api_key=os.getenv('INGESTION_API_KEY'),
             reader_type=os.getenv('INGESTION_READER_TYPE', 'pymupdf'),
             storage_provider=os.getenv('INGESTION_STORAGE_PROVIDER', 'aws'),
         )
+
+    def __post_init__(self):
+        """Normalize string fields to avoid subtle whitespace issues."""
+        fields_to_strip = [
+            "source_path",
+            "temp_dir",
+            "classifier_type",
+            "classifier_model",
+            "classifier_api_key",
+            "classifier_api_base_url",
+            "classifier_api_version",
+            "handler_type",
+            "api_base_url",
+            "api_key",
+            "reader_type",
+            "storage_provider",
+        ]
+        for name in fields_to_strip:
+            value = getattr(self, name, None)
+            if isinstance(value, str):
+                setattr(self, name, value.strip())
     
     def save_json(self, file_path: str) -> None:
         """Save configuration to JSON file.
@@ -103,6 +128,9 @@ class IngestionConfig:
             'temp_dir': self.temp_dir,
             'classifier_type': self.classifier_type,
             'classifier_model': self.classifier_model,
+            'classifier_api_key': self.classifier_api_key,
+            'classifier_api_base_url': self.classifier_api_base_url,
+            'classifier_api_version': self.classifier_api_version,
             'handler_type': self.handler_type,
             'api_base_url': self.api_base_url,
             'reader_type': self.reader_type,
@@ -126,6 +154,9 @@ class IngestionConfig:
             'temp_dir': self.temp_dir,
             'classifier_type': self.classifier_type,
             'classifier_model': self.classifier_model,
+            'classifier_api_key': self.classifier_api_key,
+            'classifier_api_base_url': self.classifier_api_base_url,
+            'classifier_api_version': self.classifier_api_version,
             'handler_type': self.handler_type,
             'api_base_url': self.api_base_url,
             'reader_type': self.reader_type,

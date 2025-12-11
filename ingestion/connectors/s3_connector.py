@@ -82,9 +82,19 @@ class S3SourceConnector(SourceConnector):
             for file in files:
                 file_name = file['name']
                 file_size = file.get('size', 0)
+                is_dir = file_name.endswith('/') or file.get('type') == 'directory'
                 
-                # Skip folder markers (size 0, ends with /)
-                if file_name.endswith('/') or file_size == 0:
+                # Descend into subfolders when requested
+                if is_dir:
+                    if recursive:
+                        subfolder = file_name if file_name.endswith('/') else file_name + '/'
+                        # Avoid infinite loop if provider returns the current folder marker
+                        if subfolder != folder_path:
+                            yield from self.walk_folder(subfolder, recursive=True)
+                    continue
+                
+                # Skip empty placeholders
+                if file_size == 0:
                     continue
                 
                 # Determine file type from extension

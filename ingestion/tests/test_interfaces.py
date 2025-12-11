@@ -7,7 +7,7 @@ from typing import Iterator, BinaryIO, List, Dict, Any
 from ingestion.connectors.base import SourceConnector
 from ingestion.processors.base import FileProcessor, FileProcessorChain
 from ingestion.readers.base import DocumentReader
-from ingestion.classifiers.base import Classifier, MetadataExtractor
+from ingestion.classifiers.base import Classifier
 from ingestion.handlers.base import CollectionHandler, APICollectionHandler
 from ingestion.core.models import (
     FileContext,
@@ -89,20 +89,6 @@ class MockClassifier(Classifier):
             reasoning="Mock classification",
             metadata={"field1": "value1"}
         )
-
-    def extract_metadata(self, text: str, catalog: Catalog) -> Dict[str, Any]:
-        return {"field1": "extracted_value1", "field2": "extracted_value2"}
-
-
-class MockMetadataExtractor(MetadataExtractor):
-    """Mock implementation of MetadataExtractor for testing."""
-
-    def extract(self, text: str, schema: Dict[str, Any]) -> Dict[str, Any]:
-        return {key: f"extracted_{key}" for key in schema.keys()}
-
-    def validate_metadata(self, metadata: Dict[str, Any], schema: Dict[str, Any]) -> bool:
-        return all(key in metadata for key in schema.keys())
-
 
 class MockCollectionHandler(CollectionHandler):
     """Mock implementation of CollectionHandler for testing."""
@@ -317,19 +303,6 @@ class TestClassifier:
         assert result.catalog_id == "test"
         assert 0.0 <= result.confidence <= 1.0
 
-    def test_extract_metadata(self):
-        classifier = MockClassifier()
-        catalog = Catalog(
-            id="test",
-            information="Test",
-            content="Test",
-            metadata_scan={"field1": "string", "field2": "boolean"}
-        )
-        metadata = classifier.extract_metadata("document text", catalog)
-        
-        assert isinstance(metadata, dict)
-        assert "field1" in metadata
-
     def test_find_catalog(self):
         classifier = MockClassifier()
         catalog1 = Catalog(id="cat1", information="Test1", content="Test1")
@@ -357,41 +330,6 @@ class TestClassifier:
         
         assert "test" in prompt.lower()
         assert "doc text" in prompt
-
-    def test_build_metadata_prompt(self):
-        classifier = MockClassifier()
-        catalog = Catalog(
-            id="test",
-            information="Test",
-            content="Test",
-            metadata_scan={"field1": "string"}
-        )
-        prompt = classifier.build_metadata_prompt("doc text", catalog)
-        
-        assert "field1" in prompt
-        assert "doc text" in prompt
-
-
-class TestMetadataExtractor:
-    """Test MetadataExtractor interface."""
-
-    def test_extract(self):
-        extractor = MockMetadataExtractor()
-        schema = {"field1": "string", "field2": "boolean"}
-        metadata = extractor.extract("document text", schema)
-        
-        assert isinstance(metadata, dict)
-        assert all(key in metadata for key in schema.keys())
-
-    def test_validate_metadata(self):
-        extractor = MockMetadataExtractor()
-        schema = {"field1": "string", "field2": "boolean"}
-        valid_metadata = {"field1": "value", "field2": True}
-        invalid_metadata = {"field1": "value"}
-        
-        assert extractor.validate_metadata(valid_metadata, schema) is True
-        assert extractor.validate_metadata(invalid_metadata, schema) is False
-
 
 class TestCollectionHandler:
     """Test CollectionHandler interface."""

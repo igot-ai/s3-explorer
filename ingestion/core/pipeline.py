@@ -95,14 +95,7 @@ class IngestionPipeline:
                         logger.error(f"Error in file callback: {str(e)}")
             
             # Step 3: Aggregate folder results
-            self._aggregate_folder_metadata(folder_ctx, config.catalogs)
-            folder_contexts.append(folder_ctx)
-            
-            if self.on_folder_completed:
-                try:
-                    self.on_folder_completed(folder_ctx)
-                except Exception as e:
-                    logger.error(f"Error in folder callback: {str(e)}")
+            self.handler.aggregate_metadata(config.catalogs)
         
         # Build final result
         execution_time = time.time() - start_time
@@ -128,8 +121,14 @@ class IngestionPipeline:
         """
         logger.debug(f"Processing file: {file_ctx.source_path}")
         
-        # Create temporary directory for processing
-        temp_dir = Path(config.temp_dir) if config.temp_dir else Path(tempfile.mkdtemp())
+        # Create temporary directory for processing; always unique and cleaned after use
+        base_temp_dir = Path(config.temp_dir) if config.temp_dir else None
+        if base_temp_dir:
+            base_temp_dir.mkdir(parents=True, exist_ok=True)
+        temp_dir_context = tempfile.TemporaryDirectory(
+            dir=str(base_temp_dir) if base_temp_dir else None
+        )
+        temp_dir = Path(temp_dir_context.name)
         
         try:
             # Stage 0: Download file
@@ -157,6 +156,8 @@ class IngestionPipeline:
                         Path(pf.local_path),
                         max_pages=config.pages_to_read
                     )
+
+                    logger.info(f"Extracted text from {pf.source_path}: {pf.extracted_text}")
                     
                     if not pf.extracted_text:
                         logger.warning(f"No text extracted from {pf.source_path}")
@@ -166,37 +167,28 @@ class IngestionPipeline:
                         continue
                     
                     # Stage 3: Classify
-                    result = self.classifier.classify(pf.extracted_text, config.catalogs)
-                    pf.classified_catalog_id = result.catalog_id
+                    result = self.classifier.classify(pf.extracted_text, pf.source_path, config.catalogs)
+                    pf.classified_catalog_id = result.category_id
                     pf.status = FileStatus.CLASSIFIED
-                    
-                    logger.info(f"Classified {pf.source_path} as {result.catalog_id} (confidence: {result.confidence:.2f})")
-                    
-                    # Stage 4: Extract metadata
-                    catalog, metadata = self.classifier.find_catalog(
-                        result.catalog_id,
-                        pf.extracted_text,
-                        config.catalogs
-                    )
-                    
+                                        
+                    # Stage 4: Upload to collection
+                    catalog = config.get_catalog_by_id(result.category_id)
                     if catalog:
-                        pf.metadata = metadata
-                        
-                        # Stage 5: Upload to collection
                         with open(pf.local_path, 'rb') as f:
                             if catalog.fetch_all_metadata:
-                                self.handler.upload_with_folder_context(
+                                asset_id = self.handler.upload_with_folder_context(
                                     pf, catalog, f, pf.metadata, folder_ctx
                                 )
                             else:
-                                self.handler.upload(pf, catalog, f, pf.metadata)
+                                asset_id = self.handler.upload(pf, catalog, f, pf.metadata)
                         
+                        pf.asset_id = asset_id  # Store the returned asset_id
                         pf.status = FileStatus.UPLOADED
-                        logger.info(f"Successfully uploaded {pf.source_path} to collection {catalog.id}")
+                        logger.info(f"Successfully uploaded {pf.source_path} to collection {catalog.id}, asset_id: {asset_id}")
                     else:
-                        logger.warning(f"Catalog {result.catalog_id} not found")
+                        logger.warning(f"Catalog {result.category_id} not found")
                         pf.status = FileStatus.FAILED
-                        pf.error_message = f"Catalog {result.catalog_id} not found"
+                        pf.error_message = f"Catalog {result.category_id} not found"
                 else:
                     logger.warning(f"Cannot read file type: {pf.file_type}")
                     pf.status = FileStatus.FAILED
@@ -209,6 +201,9 @@ class IngestionPipeline:
             file_ctx.status = FileStatus.FAILED
             file_ctx.error_message = str(e)
             folder_ctx.add_file(file_ctx)
+        finally:
+            # Remove temporary files created for this source file
+            temp_dir_context.cleanup()
 
     def _aggregate_folder_metadata(
         self,

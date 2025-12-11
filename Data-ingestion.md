@@ -94,13 +94,6 @@ Component Interaction Flow
           +--------+--------+
           |   Classifier    |  --> LLM classifies to catalog.id
           +--------+--------+
-                   |
-                   v
-          +--------+---------+
-          | MetadataExtractor|  --> Extract catalog.metadata_scan fields
-          +--------+---------+
-                   |
-                   v
           +--------+---------+
           | CollectionHandler|  --> Upload to an APIProvider to manage collection
           +------------------+
