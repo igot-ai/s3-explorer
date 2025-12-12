@@ -22,17 +22,17 @@ class CollectionHandler(ABC):
         catalog: Catalog,
         file_stream: BinaryIO,
         metadata: Dict[str, Any]
-    ) -> str:
+    ) -> Any:
         """Upload file to the target collection.
-        
+
         Args:
             file_context: Context of the file being uploaded
             catalog: Target catalog/collection
             file_stream: File content as binary stream
             metadata: Metadata to attach to the file
-            
+
         Returns:
-            Destination path/URL or API response ID
+            Upload result (asset_id, extracted metadata, etc.)
         """
         pass
 
@@ -44,7 +44,7 @@ class CollectionHandler(ABC):
         file_stream: BinaryIO,
         file_metadata: Dict[str, Any],
         folder_context: FolderContext
-    ) -> str:
+    ) -> Any:
         """Upload file with full folder context for metadata aggregation.
         
         Used when catalog.fetch_all_metadata is True to include aggregated

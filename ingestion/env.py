@@ -17,7 +17,7 @@ def _load_optional_env(var_name: str, default_value: str) -> str:
     return os.environ.get(var_name, default_value)
 
 # Load the .env file
-DOT_ENV_FILE_PATH = Path(__file__).parent / ".env"
+DOT_ENV_FILE_PATH = Path(__file__).parent.parent / ".env"
 print(f"Loading .env file from: {DOT_ENV_FILE_PATH}")
 load_dotenv(DOT_ENV_FILE_PATH, override=True)
 
@@ -27,5 +27,7 @@ LLM_MODEL_ID = _load_env("LLM_MODEL_ID")
 LLM_API_KEY = _load_env("LLM_API_KEY")
 LLM_API_BASE_URL = _load_env("LLM_API_BASE_URL")
 LLM_API_VERSION = _load_env("LLM_API_VERSION")
+LLM_MAX_TOKEN = int(_load_env("LLM_MAX_TOKEN"))
+LLM_TEMPERATURE = float(_load_env("LLM_TEMPERATURE"))
 
 # Config

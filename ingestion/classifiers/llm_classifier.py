@@ -1,13 +1,20 @@
 """Unified LLM classifier supporting multiple providers."""
 
-import re
 import json
 import logging
 import dspy
 from typing import List, Optional
 from .base import Classifier
 from ..core.models import Catalog, ClassificationResult
-from ingestion.env import LLM_PROVIDER, LLM_MODEL_ID, LLM_API_KEY, LLM_API_BASE_URL, LLM_API_VERSION
+from ingestion.env import (
+    LLM_PROVIDER, 
+    LLM_MODEL_ID, 
+    LLM_API_KEY, 
+    LLM_API_BASE_URL, 
+    LLM_API_VERSION, 
+    LLM_MAX_TOKEN, 
+    LLM_TEMPERATURE
+)
 from ingestion.utils.llm_helper import LLMHelper
 
 logger = logging.getLogger(__name__)
@@ -16,14 +23,16 @@ logger = logging.getLogger(__name__)
 class FileClassification(dspy.Signature):
     """Phân loại nội dung tệp vào danh mục phù hợp nhất dựa trên nội dung và tên file."""
     
-    # Input fields - use string types for DSPy compatibility
-    categories = dspy.InputField(desc="Danh sách danh mục hợp lệ để chọn từ (JSON format)", type=str)
-    category_ids = dspy.InputField(desc="Danh sách ID danh mục hợp lệ để chọn từ", type=str)
-    file_name = dspy.InputField(desc="Tên tệp bao gồm phần mở rộng", type=str)
-    file_content = dspy.InputField(desc="Nội dung thực tế của tệp để phân loại", type=str)
+    # Input fields
+    categories = dspy.InputField(desc="Danh sách danh mục hợp lệ để chọn từ (JSON format)")
+    category_ids = dspy.InputField(desc="Danh sách ID danh mục hợp lệ để chọn từ")
+    file_name = dspy.InputField(desc="Tên tệp bao gồm phần mở rộng")
+    file_content = dspy.InputField(desc="Nội dung thực tế của tệp để phân loại")
     
-    # Output field
-    classification = dspy.OutputField(desc="Kết quả phân loại với category_id(ID danh mục), confidence(độ tin cậy (1-5)), và reason(lý do). Bắc buộc phải trả về dưới dạng JSON và format như ClassificationResult", type=ClassificationResult)
+    # Output fields
+    category_id = dspy.OutputField(desc="ID danh mục phù hợp nhất từ category_ids")
+    confidence = dspy.OutputField(desc="Độ tin cậy từ 0.0 đến 5.0 (số thực)", type=float)
+    reason = dspy.OutputField(desc="Lý do ngắn gọn cho việc phân loại")
 
 class LLMClassifier(Classifier):
     """Unified LLM classifier with pluggable provider backends.
@@ -91,13 +100,15 @@ class LLMClassifier(Classifier):
                 [{"id": catalog.to_dict().get("id"), "information": catalog.to_dict().get("information")} for catalog in catalogs],
                 ensure_ascii=False
             )
-
+            
             llm = dspy.LM(
                 model=self.model,
                 api_key=self.api_key,
                 api_base=self.base_url,
                 api_version=self.api_version,
-                temperature=0.3,
+                max_tokens=LLM_MAX_TOKEN,
+                temperature=LLM_TEMPERATURE,
+                cache=False,
                 **self.kwargs
             )
 
@@ -109,36 +120,20 @@ class LLMClassifier(Classifier):
                     file_content=file_content,
                 )
 
-            if hasattr(prediction, "classification") and prediction.classification:
-                classification = prediction.classification
-
-                logger.info(f"Classification result: {type(classification)} {classification}")
-                if isinstance(classification, ClassificationResult):
-                    return classification
-
-                # Handle string (JSON) response from LLM
-                if isinstance(classification, str):
-                    try:
-                        json_match = re.search(r"```json\s*(.*?)\s*```", classification, re.DOTALL)
-                        json_payload = json_match.group(1).strip() if json_match else classification
-                        classification = json.loads(json_payload)
-                    except (json.JSONDecodeError, TypeError) as e:
-                        logger.error(f"Failed to parse classification JSON: {e}")
-                        return fallback_classification
-
-                if isinstance(classification, dict):
-                    # Map LLM field names to ClassificationResult field names
-                    parsed = ClassificationResult(
-                        category_id=classification.get("category_id") or classification.get("id", "unknown"),
-                        confidence=int(classification.get("confidence", 0)),
-                        reason=classification.get("reason", "")
-                    )
-                    return parsed
-
-                logger.warning(f"Unexpected classification type: {type(classification)} - {classification}")
-                return fallback_classification
+            # Extract separate fields from prediction
+            category_id = getattr(prediction, "category_id", None)
+            confidence = getattr(prediction, "confidence", None)
+            reason = getattr(prediction, "reason", None)
+            
+            logger.info(f"Classification result: category_id={category_id}, confidence={confidence}, reason={reason}")
+            
+            if category_id:
+                return ClassificationResult(
+                    category_id=str(category_id).strip(),
+                    confidence=confidence if confidence else 0,
+                    reason=str(reason).strip() if reason else ""
+                )
             else:
-                logger.warning("No classification result in DSPy prediction")
                 return fallback_classification
 
         except Exception as e:

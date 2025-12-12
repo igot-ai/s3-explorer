@@ -32,7 +32,7 @@ s3fs = "^2025.12.0"
 anthropic = "^0.75.0"
 pymupdf = "^1.26.6"
 pdfplumber = "^0.11.8"
-dspy = "^3.0.4"
+dspy = {git = "https://github.com/igot-ai/dspy.git", branch = "main", extras = ["mcp"]}
 markitdown = "^0.1.4"
 
 [build-system]

@@ -1,8 +1,8 @@
 """Core data models for the ingestion pipeline."""
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
-from pydantic import BaseModel
+from typing import Dict, List, Optional, Any, Union
+from pydantic import BaseModel, field_validator
 from enum import Enum
 import logging
 
@@ -151,6 +151,26 @@ class ClassificationResult(BaseModel):
     category_id: str
     confidence: int  # 1-5 scale
     reason: str
+    
+    @field_validator('confidence', mode='before')
+    @classmethod
+    def coerce_confidence(cls, v: Union[str, int, float]) -> int:
+        """Convert confidence to int, handling string and float inputs from LLM."""
+        if v is None:
+            return 0
+        if isinstance(v, str):
+            try:
+                # Handle string numbers like "3" or "0.8"
+                v = float(v)
+            except ValueError:
+                return 0
+        if isinstance(v, float):
+            # Round float to int, scale if needed (0-1 range to 1-5)
+            if 0 <= v <= 1:
+                v = int(v * 5)  # Scale 0-1 to 0-5
+            else:
+                v = int(round(v))
+        return max(0, min(5, int(v)))  # Clamp to 0-5 range
 
 
 @dataclass

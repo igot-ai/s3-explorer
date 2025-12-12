@@ -8,6 +8,7 @@ import logging
 import time
 from typing import Dict, Any, BinaryIO, Optional, List
 from uuid import UUID
+import json
 
 import httpx
 
@@ -119,6 +120,7 @@ class DatalogService:
         file_bytes: bytes,
         filename: str,
         content_type: str,
+        column_static_data: Optional[Dict[str, Any]] = None,
         plain_text: str = "",
         source_id: str = "",
         extra_headers: Optional[Dict[str, str]] = None,
@@ -130,6 +132,7 @@ class DatalogService:
             file_bytes: File content
             filename: File name to send
             content_type: MIME type (e.g., image/jpeg, application/pdf)
+            column_static_data: Column static data (optional)
             plain_text: Plain text content (optional)
             source_id: Source ID (optional)
             extra_headers: Optional additional headers
@@ -146,8 +149,12 @@ class DatalogService:
             data["plain_text"] = plain_text
         if source_id:
             data["source_id"] = source_id
+        if column_static_data:
+            data["column_static_data"] = json.dumps(column_static_data)
 
         files["upload_files"] = (filename, file_bytes, content_type)
+
+        logger.info(f"Uploading asset to {url} with data: {data}")
 
         headers = self._build_headers(extra_headers)
         resp = await self.client.post(url, headers=headers, data=data, files=files)
@@ -383,6 +390,7 @@ class DatalogService:
         self,
         project_id: str,
         table_id: str,
+        asset_ids: Optional[List[str]] = None,
         extra_headers: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """Trigger transformation for a specific catalog table.
@@ -393,6 +401,7 @@ class DatalogService:
         Args:
             project_id: Catalog project ID
             table_id: Catalog table ID
+            asset_ids: List of Asset IDs to trigger transformation for
             extra_headers: Optional additional headers
 
         Returns:
@@ -402,6 +411,8 @@ class DatalogService:
         url = f"/projects/{project_id}/tables/{table_id}/transformation"
         # Always set to_prod to False because if we use production mode, we cannot switch back to draft mode
         payload = {"enable_scan_batch": False, "to_prod": False}
+        if asset_ids:
+            payload["asset_ids"] = asset_ids
 
         return await self._post(url, json_data=payload, extra_headers=extra_headers)
 
@@ -590,7 +601,8 @@ class DataCollectionAPIHandler(APICollectionHandler):
         self.project_id = project_id
         self._service = DatalogService(auth_token=auth_token, base_url=base_url)
         self._authenticated = True  # Token-based auth is always "authenticated"
-        self._catalog_ids_with_assets: set[str] = set()  # Track catalogs with uploaded assets
+        # Track catalog_id -> [asset_ids] for transformation polling
+        self._catalog_assets: Dict[str, List[str]] = {}
 
     def __del__(self):
         """Cleanup async client on destruction."""
@@ -706,7 +718,7 @@ class DataCollectionAPIHandler(APICollectionHandler):
         catalog: Catalog,
         file_stream: BinaryIO,
         metadata: Dict[str, Any]
-    ) -> str:
+    ) -> Dict[str, Any]:
         """Upload file to Datalog collection.
         
         Args:
@@ -740,6 +752,7 @@ class DataCollectionAPIHandler(APICollectionHandler):
                     content_type=content_type,
                     plain_text=None,
                     source_id=file_context.source_path,
+                    column_static_data=metadata.get("folder_metadata", {}),
                 )
             )
             
@@ -763,18 +776,34 @@ class DataCollectionAPIHandler(APICollectionHandler):
                     return None
                 
                 asset_id = _pick_asset(uploaded_files)
+
+                self._run_async(
+                    self._service.trigger_transformation(
+                        project_id=self.project_id,
+                        table_id=catalog.id,
+                        asset_ids=[asset_id],
+                    )
+                )
+
+                extracted_metadata = self._run_async(
+                    self._service.poll_data_assets(
+                        table_id=catalog.id,
+                        asset_id=asset_id,
+                        interval_seconds=10.0,
+                        max_attempts=60  # Wait up to 10 minutes per asset
+                    )
+                )
+
+                # Return both asset_id and extracted metadata
+                return {
+                    "asset_id": asset_id,
+                    "extracted_metadata": extracted_metadata or {}
+                }
             
             if not asset_id:
                 raise ValueError(f"Upload response missing asset_id (response keys: {list(result.keys())})")
-            
-            # Track this catalog as having uploaded assets
-            self._catalog_ids_with_assets.add(catalog.id)
-            
-            logger.info(
-                f"Uploaded {file_context.source_path} to catalog {catalog.id}, "
-                f"collection {catalog.id}, asset ID: {asset_id}"
-            )
-            return asset_id
+
+            return []
             
         except Exception as e:
             logger.error(f"Error uploading to Datalog: {str(e)}")
@@ -787,22 +816,22 @@ class DataCollectionAPIHandler(APICollectionHandler):
         file_stream: BinaryIO,
         file_metadata: Dict[str, Any],
         folder_context: FolderContext
-    ) -> str:
+    ) -> Dict[str, Any]:
         """Upload file with full folder context for metadata aggregation.
-        
+
         Args:
             file_context: Context of the file being uploaded
             catalog: Target catalog/collection
             file_stream: File content as binary stream
             file_metadata: File-specific metadata
             folder_context: Context of the parent folder
-            
+
         Returns:
-            Asset ID from Datalog
+            Dict containing asset_id and extracted_metadata
         """
         # Prepare metadata with folder context
         prepared_metadata = self.prepare_metadata(file_metadata, folder_context, catalog)
-        
+
         # Upload file (metadata is included in the file context)
         return self.upload(file_context, catalog, file_stream, prepared_metadata)
 
@@ -841,9 +870,16 @@ class DataCollectionAPIHandler(APICollectionHandler):
     def aggregate_metadata(self, catalogs: List[Catalog]) -> bool:
         """Trigger transformation for catalogs that have uploaded assets.
         
-        Uses internal tracking of uploaded catalogs (`self._catalog_ids_with_assets`)
-        and processes them sequentially. Catalogs with fetch_all_metadata=True
-        are processed last.
+        Uses internal tracking of uploaded catalogs (`self._catalog_assets`)
+        and processes them sequentially. Each catalog's transformation is 
+        polled until complete before moving to the next one.
+        Catalogs with fetch_all_metadata=True are processed last.
+        
+        Args:
+            catalogs: List of all available catalogs
+            
+        Returns:
+            True if all transformations completed successfully, False otherwise
         """
         if not catalogs:
             logger.warning("No catalogs provided for transformation")
@@ -853,12 +889,13 @@ class DataCollectionAPIHandler(APICollectionHandler):
             logger.error("No project_id configured for triggering transformation")
             return False
         
-        if not self._catalog_ids_with_assets:
+        if not self._catalog_assets:
             logger.info("No catalogs with uploaded assets to trigger transformation")
             return True
         
+        # Filter to only catalogs that have uploaded assets
         catalogs_to_process = [
-            c for c in catalogs if c.id in self._catalog_ids_with_assets
+            c for c in catalogs if c.id in self._catalog_assets
         ]
         if not catalogs_to_process:
             logger.info("No matching catalogs with uploaded assets found")
@@ -876,35 +913,21 @@ class DataCollectionAPIHandler(APICollectionHandler):
         
         success = True
         for catalog in sorted_catalogs:
-            try:
-                if not catalog.id:
-                    logger.warning("Catalog missing id, skipping transformation")
-                    continue
-                
-                # Verify collection exists before triggering transformation
-                if not self.exists_collection(catalog.id):
-                    logger.warning(
-                        f"Collection {catalog.id} does not exist, skipping transformation"
-                    )
-                    continue
-                
-                result = self._run_async(
-                    self._service.trigger_transformation(
-                        project_id=self.project_id,
-                        table_id=catalog.id,
-                    )
+            if not catalog.id:
+                logger.warning("Catalog missing id, skipping transformation")
+                continue
+            
+            # Verify collection exists before triggering transformation
+            if not self.exists_collection(catalog.id):
+                logger.warning(
+                    f"Collection {catalog.id} does not exist, skipping transformation"
                 )
-                logger.info(
-                    f"Triggered transformation for catalog {catalog.id} "
-                    f"(fetch_all_metadata={catalog.fetch_all_metadata}): {result}"
-                )
-                
-            except Exception as e:
-                logger.error(
-                    f"Error triggering transformation for catalog {catalog.id}: {e}"
-                )
+                continue
+            
+            # Trigger transformation and wait for completion before next catalog
+            if not self._trigger_transformation(catalog):
                 success = False
         
-        # Clear processed catalogs to avoid duplicate triggering
-        self._catalog_ids_with_assets.clear()
+        # Clear processed catalog assets to avoid duplicate triggering
+        self._catalog_assets.clear()
         return success
