@@ -8,7 +8,7 @@ from shared._logging import get_logger
 from flask import Blueprint, jsonify, redirect, render_template, request, send_file, session, url_for
 from werkzeug.utils import secure_filename
 
-from s3_explore.services.storage_providers import get_storage_provider
+from shared.storage import get_storage_provider
 
 logger = get_logger(__name__)
 
@@ -389,9 +389,10 @@ def delete_folder():
         if not folder_name:
             return jsonify({"error": "Folder name is required"}), 400
 
-        from s3_utils import delete_folder as delete_folder_util
+        if not hasattr(provider, "delete_folder"):
+            return jsonify({"error": "Folder deletion not supported by this storage provider"}), 400
 
-        delete_folder_util(folder_name)
+        provider.delete_folder(folder_name)
         return jsonify({"message": "Folder deleted successfully", "folder_name": folder_name}), 200
     except Exception as e:
         logger.error(f"Error deleting folder: {str(e)}")

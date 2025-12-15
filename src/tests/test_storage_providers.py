@@ -30,7 +30,7 @@ TEST_ACCOUNT_ID = "test-account-123"
 class TestAWSProvider:
     """Test AWS S3 Provider"""
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_init(self, mock_boto_client):
         """Test AWS provider initialization"""
         provider = AWSS3Provider(
@@ -48,7 +48,7 @@ class TestAWSProvider:
             region_name=TEST_REGION
         )
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_upload_file(self, mock_boto_client):
         """Test file upload"""
         mock_s3 = Mock()
@@ -64,7 +64,7 @@ class TestAWSProvider:
         assert call_args[0][1] == TEST_BUCKET
         assert call_args[0][2] == TEST_FILENAME
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_download_file(self, mock_boto_client):
         """Test file download"""
         mock_s3 = Mock()
@@ -83,7 +83,7 @@ class TestAWSProvider:
         assert result.read() == TEST_FILE_CONTENT
         mock_s3.download_fileobj.assert_called_once_with(TEST_BUCKET, TEST_FILENAME, result)
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_list_files(self, mock_boto_client):
         """Test listing files"""
         mock_s3 = Mock()
@@ -110,7 +110,7 @@ class TestAWSProvider:
         assert files[1]['name'] == 'file2.txt'
         assert files[1]['size'] == 200
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_list_files_with_prefix(self, mock_boto_client):
         """Test listing files with prefix"""
         mock_s3 = Mock()
@@ -125,7 +125,7 @@ class TestAWSProvider:
 
         mock_paginator.paginate.assert_called_once_with(Bucket=TEST_BUCKET, Prefix='folder/')
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_delete_file(self, mock_boto_client):
         """Test file deletion"""
         mock_s3 = Mock()
@@ -136,7 +136,7 @@ class TestAWSProvider:
 
         mock_s3.delete_object.assert_called_once_with(Bucket=TEST_BUCKET, Key=TEST_FILENAME)
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_get_file_url(self, mock_boto_client):
         """Test presigned URL generation"""
         mock_s3 = Mock()
@@ -157,7 +157,7 @@ class TestAWSProvider:
 class TestWasabiProvider:
     """Test Wasabi Provider"""
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_init_with_correct_endpoint(self, mock_boto_client):
         """Test Wasabi provider initialization with correct endpoint"""
         provider = WasabiProvider(
@@ -175,7 +175,7 @@ class TestWasabiProvider:
             aws_secret_access_key=TEST_SECRET_KEY
         )
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_upload_file(self, mock_boto_client):
         """Test Wasabi file upload"""
         mock_s3 = Mock()
@@ -192,7 +192,7 @@ class TestWasabiProvider:
 class TestCloudflareR2Provider:
     """Test Cloudflare R2 Provider"""
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_init_with_account_id(self, mock_boto_client):
         """Test Cloudflare R2 provider initialization"""
         provider = CloudflareR2Provider(
@@ -211,7 +211,7 @@ class TestCloudflareR2Provider:
             aws_secret_access_key=TEST_SECRET_KEY
         )
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_upload_and_download(self, mock_boto_client):
         """Test Cloudflare R2 upload and download"""
         mock_s3 = Mock()
@@ -236,7 +236,7 @@ class TestCloudflareR2Provider:
 class TestDigitalOceanProvider:
     """Test DigitalOcean Spaces Provider"""
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_init_with_correct_endpoint(self, mock_boto_client):
         """Test DigitalOcean provider initialization"""
         provider = DigitalOceanSpacesProvider(
@@ -254,7 +254,7 @@ class TestDigitalOceanProvider:
             aws_secret_access_key=TEST_SECRET_KEY
         )
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_all_operations(self, mock_boto_client):
         """Test all DigitalOcean operations"""
         mock_s3 = Mock()
@@ -281,7 +281,7 @@ class TestDigitalOceanProvider:
 class TestHetznerProvider:
     """Test Hetzner Storage Provider"""
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_init_with_correct_endpoint(self, mock_boto_client):
         """Test Hetzner provider initialization"""
         provider = HetznerStorageProvider(
@@ -299,7 +299,7 @@ class TestHetznerProvider:
             aws_secret_access_key=TEST_SECRET_KEY
         )
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_presigned_url(self, mock_boto_client):
         """Test Hetzner presigned URL generation"""
         mock_s3 = Mock()
@@ -316,7 +316,7 @@ class TestHetznerProvider:
 class TestProviderFactory:
     """Test get_storage_provider factory function"""
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_get_aws_provider(self, mock_boto_client):
         """Test factory creates AWS provider"""
         provider = get_storage_provider(
@@ -328,7 +328,7 @@ class TestProviderFactory:
         )
         assert isinstance(provider, AWSS3Provider)
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_get_wasabi_provider(self, mock_boto_client):
         """Test factory creates Wasabi provider"""
         provider = get_storage_provider(
@@ -340,7 +340,7 @@ class TestProviderFactory:
         )
         assert isinstance(provider, WasabiProvider)
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_get_cloudflare_provider(self, mock_boto_client):
         """Test factory creates Cloudflare R2 provider"""
         provider = get_storage_provider(
@@ -352,7 +352,7 @@ class TestProviderFactory:
         )
         assert isinstance(provider, CloudflareR2Provider)
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_get_digitalocean_provider(self, mock_boto_client):
         """Test factory creates DigitalOcean provider"""
         provider = get_storage_provider(
@@ -364,7 +364,7 @@ class TestProviderFactory:
         )
         assert isinstance(provider, DigitalOceanSpacesProvider)
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_get_hetzner_provider(self, mock_boto_client):
         """Test factory creates Hetzner provider"""
         provider = get_storage_provider(
@@ -385,7 +385,7 @@ class TestProviderFactory:
 class TestEdgeCases:
     """Test edge cases and error handling"""
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_empty_file_upload(self, mock_boto_client):
         """Test uploading empty file"""
         mock_s3 = Mock()
@@ -397,7 +397,7 @@ class TestEdgeCases:
         provider.upload_file(empty_file, "empty.txt")
         mock_s3.upload_fileobj.assert_called_once()
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_list_files_empty_bucket(self, mock_boto_client):
         """Test listing files in empty bucket"""
         mock_s3 = Mock()
@@ -412,7 +412,7 @@ class TestEdgeCases:
 
         assert files == []
 
-    @patch('ingestion.core.connectors.storage.boto3.client')
+    @patch('shared.storage.boto3.client')
     def test_large_file_handling(self, mock_boto_client):
         """Test handling large files"""
         mock_s3 = Mock()

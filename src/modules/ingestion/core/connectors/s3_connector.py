@@ -5,7 +5,7 @@ from typing import Iterator, BinaryIO, List
 from pathlib import Path
 from ingestion.core.connectors.base import SourceConnector
 from ingestion.core.models import FileContext, FileStatus
-from ingestion.core.connectors.storage import StorageProvider
+from shared.storage import StorageProvider
 
 logger = get_logger(__name__)
 

@@ -2,9 +2,7 @@ from abc import ABC, abstractmethod
 import boto3
 import s3fs
 import b2sdk.v2 as b2
-import requests
-from typing import BinaryIO, List, Tuple, Optional
-import os
+from typing import BinaryIO, List, Optional
 from google.cloud import storage
 from google.oauth2 import service_account
 import json
@@ -95,6 +93,31 @@ class S3CompatibleProvider(StorageProvider):
             folder_name += '/'
         s3_path = f'{self.bucket}/{folder_name}'
         self.fs.touch(s3_path)
+
+    def delete_folder(self, folder_name: str) -> None:
+        """Delete a folder and its contents using s3fs.
+
+        Note: "folders" in S3-compatible object stores are key prefixes. We delete
+        all objects under the prefix and then attempt to delete the prefix marker.
+        """
+        if not folder_name.endswith('/'):
+            folder_name += '/'
+
+        s3_path = f'{self.bucket}/{folder_name}'
+
+        # Delete all objects within the folder (prefix)
+        try:
+            objects = self.fs.glob(f"{s3_path}**")
+            if objects:
+                self.fs.rm(objects, recursive=True)
+        except FileNotFoundError:
+            pass
+
+        # Delete the folder marker object if present
+        try:
+            self.fs.rm(s3_path)
+        except FileNotFoundError:
+            pass
 
 class AWSS3Provider(S3CompatibleProvider):
     """Amazon S3 storage provider using s3fs

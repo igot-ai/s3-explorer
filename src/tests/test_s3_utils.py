@@ -20,7 +20,7 @@ TEST_REGION = "us-east-1"
 class TestValidateCredentials:
     """Test validate_credentials function"""
 
-    @patch('s3_utils.boto3.client')
+    @patch('shared.s3_utils.boto3.client')
     def test_validate_credentials_success(self, mock_boto_client):
         """Test successful credential validation"""
         mock_s3 = Mock()
@@ -37,7 +37,7 @@ class TestValidateCredentials:
         mock_s3.head_bucket.assert_called_once_with(Bucket=TEST_BUCKET)
         mock_s3.list_objects_v2.assert_called_once_with(Bucket=TEST_BUCKET, MaxKeys=1)
 
-    @patch('s3_utils.boto3.client')
+    @patch('shared.s3_utils.boto3.client')
     def test_validate_credentials_bucket_not_found(self, mock_boto_client):
         """Test credential validation with non-existent bucket"""
         mock_s3 = Mock()
@@ -53,7 +53,7 @@ class TestValidateCredentials:
         assert result is False
         assert "does not exist" in message
 
-    @patch('s3_utils.boto3.client')
+    @patch('shared.s3_utils.boto3.client')
     def test_validate_credentials_access_denied(self, mock_boto_client):
         """Test credential validation with access denied"""
         mock_s3 = Mock()
@@ -72,7 +72,7 @@ class TestValidateCredentials:
 class TestUploadFile:
     """Test upload_file function"""
 
-    @patch('s3_utils.get_s3_client')
+    @patch('shared.s3_utils.get_s3_client')
     @patch('s3_utils.s3_config')
     def test_upload_file_success(self, mock_config, mock_get_client):
         """Test successful file upload"""
@@ -85,7 +85,7 @@ class TestUploadFile:
 
         mock_s3.upload_fileobj.assert_called_once_with(file_obj, TEST_BUCKET, TEST_FILENAME)
 
-    @patch('s3_utils.get_s3_client')
+    @patch('shared.s3_utils.get_s3_client')
     @patch('s3_utils.s3_config')
     def test_upload_file_error(self, mock_config, mock_get_client):
         """Test upload file with error"""
@@ -102,7 +102,7 @@ class TestUploadFile:
 class TestDownloadFile:
     """Test download_file function"""
 
-    @patch('s3_utils.get_s3_client')
+    @patch('shared.s3_utils.get_s3_client')
     @patch('s3_utils.s3_config')
     def test_download_file_success(self, mock_config, mock_get_client):
         """Test successful file download"""
@@ -119,7 +119,7 @@ class TestDownloadFile:
         assert result == mock_body
         mock_s3.get_object.assert_called_once_with(Bucket=TEST_BUCKET, Key=TEST_FILENAME)
 
-    @patch('s3_utils.get_s3_client')
+    @patch('shared.s3_utils.get_s3_client')
     @patch('s3_utils.s3_config')
     def test_download_file_error(self, mock_config, mock_get_client):
         """Test download file with error"""
@@ -135,7 +135,7 @@ class TestDownloadFile:
 class TestDeleteFile:
     """Test delete_file function"""
 
-    @patch('s3_utils.get_s3_client')
+    @patch('shared.s3_utils.get_s3_client')
     @patch('s3_utils.s3_config')
     def test_delete_file_success(self, mock_config, mock_get_client):
         """Test successful file deletion"""
@@ -163,7 +163,7 @@ class TestDeleteFile:
 class TestListFilesAndFolders:
     """Test list_files_and_folders function"""
 
-    @patch('s3_utils.get_s3_client')
+    @patch('shared.s3_utils.get_s3_client')
     @patch('s3_utils.s3_config')
     def test_list_files_and_folders_success(self, mock_config, mock_get_client):
         """Test successful listing of files and folders"""
@@ -196,7 +196,7 @@ class TestListFilesAndFolders:
         assert 'folder/' in folders
         assert 'documents/' in folders
 
-    @patch('s3_utils.get_s3_client')
+    @patch('shared.s3_utils.get_s3_client')
     @patch('s3_utils.s3_config')
     def test_list_files_with_prefix(self, mock_config, mock_get_client):
         """Test listing files with prefix filter"""
@@ -223,7 +223,7 @@ class TestListFilesAndFolders:
         assert files == []
         assert folders == []
 
-    @patch('s3_utils.get_s3_client')
+    @patch('shared.s3_utils.get_s3_client')
     @patch('s3_utils.s3_config')
     def test_list_files_with_min_size_filter(self, mock_config, mock_get_client):
         """Test listing files with minimum size filter"""
