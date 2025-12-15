@@ -3,4 +3,3 @@
 from .base import DocumentReader
 
 __all__ = ["DocumentReader"]
-

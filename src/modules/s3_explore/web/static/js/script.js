@@ -1,10 +1,10 @@
 function updateProviderFields() {
     const provider = document.getElementById('provider_type').value;
     const providerFields = document.getElementById('provider-fields');
-    
+
     // Hide all fields first
     providerFields.innerHTML = '';
-    
+
     // Common fields for most providers
     const commonFields = `
         <div class="form-group">
@@ -12,7 +12,7 @@ function updateProviderFields() {
             <input type="text" class="form-control" id="bucket" name="bucket" required>
         </div>
     `;
-    
+
     const s3Fields = `
         <div class="form-group">
             <label for="access_key">Access Key ID:</label>
@@ -37,12 +37,12 @@ function updateProviderFields() {
         </div>
         ${commonFields}
     `;
-    
+
     switch(provider) {
         case 'aws':
             providerFields.innerHTML = s3Fields;
             break;
-            
+
         case 'wasabi':
             providerFields.innerHTML = `
                 <div class="form-group">
@@ -68,7 +68,7 @@ function updateProviderFields() {
                 ${commonFields}
             `;
             break;
-            
+
         case 'backblaze':
             providerFields.innerHTML = `
                 <div class="form-group">
@@ -86,7 +86,7 @@ function updateProviderFields() {
                 </div>
             `;
             break;
-            
+
         case 'gcs':
             providerFields.innerHTML = `
                 <div class="form-group">
@@ -103,7 +103,7 @@ function updateProviderFields() {
                 </div>
             `;
             break;
-            
+
         case 'digitalocean':
             providerFields.innerHTML = `
                 <div class="form-group">
@@ -127,7 +127,7 @@ function updateProviderFields() {
                 ${commonFields}
             `;
             break;
-            
+
         case 'hetzner':
             providerFields.innerHTML = `
                 <div class="form-group">
@@ -150,4 +150,4 @@ function updateProviderFields() {
             `;
             break;
     }
-} 
+}

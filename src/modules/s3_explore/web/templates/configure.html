@@ -10,7 +10,7 @@
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto py-8">
         <h1 class="text-3xl font-bold mb-8 text-center">Configure Storage Settings</h1>
-        
+
         {% if session.get('authenticated') %}
         <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6 mb-6">
             <div class="text-center mb-6">
@@ -19,18 +19,18 @@
                 <p class="text-gray-800 text-lg">Bucket: {{ session.get('bucket') }}</p>
             </div>
             <div class="flex justify-between">
-                <a href="{{ url_for('s3_explore.index') }}" 
+                <a href="{{ url_for('s3_explore.index') }}"
                    class="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700">
                     Back to Files
                 </a>
-                <a href="{{ url_for('s3_explore.logout') }}" 
+                <a href="{{ url_for('s3_explore.logout') }}"
                    class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700">
                     Logout
                 </a>
             </div>
         </div>
         {% endif %}
-        
+
         <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
             <form id="configForm" action="{{ url_for('s3_explore.configure_storage') }}" method="POST" class="space-y-4">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
@@ -57,37 +57,37 @@
                 <div id="aws-wasabi-fields">
                     <div class="relative">
                         <label class="block text-sm font-medium text-gray-700">Access Key ID</label>
-                        <input type="password" name="access_key" 
+                        <input type="password" name="access_key"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                                autocomplete="off">
-                        <button type="button" 
+                        <button type="button"
                                 class="absolute right-2 top-8 text-gray-600 hover:text-gray-800"
                                 onclick="toggleVisibility(this.previousElementSibling)">
                             👁️
                         </button>
                     </div>
-                    
+
                     <div class="relative mt-4">
                         <label class="block text-sm font-medium text-gray-700">Secret Access Key</label>
-                        <input type="password" name="secret_key" 
+                        <input type="password" name="secret_key"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                                autocomplete="off">
-                        <button type="button" 
+                        <button type="button"
                                 class="absolute right-2 top-8 text-gray-600 hover:text-gray-800"
                                 onclick="toggleVisibility(this.previousElementSibling)">
                             👁️
                         </button>
                     </div>
-                    
+
                     <div class="mt-4">
                         <label class="block text-sm font-medium text-gray-700">Bucket Name</label>
-                        <input type="text" name="bucket" 
+                        <input type="text" name="bucket"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                     </div>
-                    
+
                     <div class="mt-4">
                         <label class="block text-sm font-medium text-gray-700">Region</label>
-                        <select name="region" 
+                        <select name="region"
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                             <option value="us-east-1">US East (N. Virginia) us-east-1</option>
                             <option value="us-east-2">US East (Ohio) us-east-2</option>
@@ -106,31 +106,31 @@
                 <div id="backblaze-fields" class="hidden">
                     <div class="relative">
                         <label class="block text-sm font-medium text-gray-700">Key ID</label>
-                        <input type="password" name="key_id" 
+                        <input type="password" name="key_id"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                                autocomplete="off">
-                        <button type="button" 
+                        <button type="button"
                                 class="absolute right-2 top-8 text-gray-600 hover:text-gray-800"
                                 onclick="toggleVisibility(this.previousElementSibling)">
                             👁️
                         </button>
                     </div>
-                    
+
                     <div class="relative mt-4">
                         <label class="block text-sm font-medium text-gray-700">Application Key</label>
-                        <input type="password" name="application_key" 
+                        <input type="password" name="application_key"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                                autocomplete="off">
-                        <button type="button" 
+                        <button type="button"
                                 class="absolute right-2 top-8 text-gray-600 hover:text-gray-800"
                                 onclick="toggleVisibility(this.previousElementSibling)">
                             👁️
                         </button>
                     </div>
-                    
+
                     <div class="mt-4">
                         <label class="block text-sm font-medium text-gray-700">Bucket Name</label>
-                        <input type="text" name="bucket_name" 
+                        <input type="text" name="bucket_name"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                     </div>
                 </div>
@@ -142,13 +142,13 @@
                         <input type="text" name="project_id" id="project_id"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                     </div>
-                    
+
                     <div class="mt-4">
                         <label class="block text-sm font-medium text-gray-700">Bucket Name</label>
                         <input type="text" name="bucket_name" id="bucket_name"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                     </div>
-                    
+
                     <div class="mt-4">
                         <label class="block text-sm font-medium text-gray-700">Service Account JSON</label>
                         <textarea name="credentials_json" id="credentials_json"
@@ -161,38 +161,38 @@
                 <div id="digitalocean-fields" class="hidden">
                     <div class="relative">
                         <label class="block text-sm font-medium text-gray-700">Access Key</label>
-                        <input type="password" name="access_key" 
+                        <input type="password" name="access_key"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                                autocomplete="off">
-                        <button type="button" 
+                        <button type="button"
                                 class="absolute right-2 top-8 text-gray-600 hover:text-gray-800"
                                 onclick="toggleVisibility(this.previousElementSibling)">
                             👁️
                         </button>
                     </div>
-                    
+
                     <div class="relative mt-4">
                         <label class="block text-sm font-medium text-gray-700">Secret Key</label>
-                        <input type="password" name="secret_key" 
+                        <input type="password" name="secret_key"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                                autocomplete="off">
-                        <button type="button" 
+                        <button type="button"
                                 class="absolute right-2 top-8 text-gray-600 hover:text-gray-800"
                                 onclick="toggleVisibility(this.previousElementSibling)">
                             👁️
                         </button>
                     </div>
-                    
+
                     <div class="mt-4">
                         <label class="block text-sm font-medium text-gray-700">Bucket Name</label>
-                        <input type="text" name="bucket" 
+                        <input type="text" name="bucket"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                                pattern="[a-z0-9][a-z0-9.-]{2,62}[a-z0-9]">
                     </div>
-                    
+
                     <div class="mt-4">
                         <label class="block text-sm font-medium text-gray-700">Region</label>
-                        <select name="region" 
+                        <select name="region"
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                             <option value="fra1">Frankfurt (FRA1)</option>
                             <option value="nyc3">New York (NYC3)</option>
@@ -218,26 +218,26 @@
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                                autocomplete="new-password"
                                placeholder="Your R2 Access Key ID">
-                        <button type="button" 
+                        <button type="button"
                                 class="absolute right-2 top-8 text-gray-600 hover:text-gray-800"
                                 onclick="toggleVisibility(this.previousElementSibling)">
                             👁️
                         </button>
                     </div>
-                    
+
                     <div class="relative mt-4">
                         <label class="block text-sm font-medium text-gray-700">Secret Access Key</label>
                         <input type="password" name="secret_key" id="cloudflare_secret_key"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                                autocomplete="new-password"
                                placeholder="Your R2 Secret Access Key">
-                        <button type="button" 
+                        <button type="button"
                                 class="absolute right-2 top-8 text-gray-600 hover:text-gray-800"
                                 onclick="toggleVisibility(this.previousElementSibling)">
                             👁️
                         </button>
                     </div>
-                    
+
                     <div class="mt-4">
                         <label class="block text-sm font-medium text-gray-700">Bucket Name</label>
                         <input type="text" name="bucket" id="cloudflare_bucket"
@@ -250,37 +250,37 @@
                 <div id="hetzner-fields" class="hidden">
                     <div class="relative">
                         <label class="block text-sm font-medium text-gray-700">Access Key</label>
-                        <input type="password" name="access_key" 
+                        <input type="password" name="access_key"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                                autocomplete="off">
-                        <button type="button" 
+                        <button type="button"
                                 class="absolute right-2 top-8 text-gray-600 hover:text-gray-800"
                                 onclick="toggleVisibility(this.previousElementSibling)">
                             👁️
                         </button>
                     </div>
-                    
+
                     <div class="relative mt-4">
                         <label class="block text-sm font-medium text-gray-700">Secret Key</label>
-                        <input type="password" name="secret_key" 
+                        <input type="password" name="secret_key"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                                autocomplete="off">
-                        <button type="button" 
+                        <button type="button"
                                 class="absolute right-2 top-8 text-gray-600 hover:text-gray-800"
                                 onclick="toggleVisibility(this.previousElementSibling)">
                             👁️
                         </button>
                     </div>
-                    
+
                     <div class="mt-4">
                         <label class="block text-sm font-medium text-gray-700">Bucket Name</label>
-                        <input type="text" name="bucket" 
+                        <input type="text" name="bucket"
                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                     </div>
-                    
+
                     <div class="mt-4">
                         <label class="block text-sm font-medium text-gray-700">Region</label>
-                        <select name="region" 
+                        <select name="region"
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                             <!-- European Regions -->
                             <optgroup label="Europe">
@@ -301,7 +301,7 @@
                     </div>
                 </div>
 
-                <button type="submit" 
+                <button type="submit"
                         class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">
                     {% if session.get('authenticated') %}
                         Update Configuration
@@ -439,19 +439,19 @@
             <div class="flex flex-col items-center justify-center space-y-4">
                 <p class="text-gray-600">If you like our work, please consider giving us a star!</p>
                 <!-- GitHub Star Button -->
-                <iframe 
-                    src="https://ghbtns.com/github-btn.html?user=rohitg00&repo=s3-file-share-for-free&type=star&count=true&size=large" 
-                    frameborder="0" 
-                    scrolling="0" 
-                    width="170" 
+                <iframe
+                    src="https://ghbtns.com/github-btn.html?user=rohitg00&repo=s3-file-share-for-free&type=star&count=true&size=large"
+                    frameborder="0"
+                    scrolling="0"
+                    width="170"
                     height="30"
                     title="GitHub"
                 ></iframe>
                 <p class="text-gray-600 mt-4">
-                    Made with <span class="text-red-500">❤️</span> by 
-                    <a href="https://github.com/rohitg00" 
+                    Made with <span class="text-red-500">❤️</span> by
+                    <a href="https://github.com/rohitg00"
                        class="text-blue-600 hover:text-blue-800 font-medium"
-                       target="_blank" 
+                       target="_blank"
                        rel="noopener noreferrer">
                         Rohit Ghumare
                     </a>
@@ -513,7 +513,7 @@
         function updateProviderFields() {
             const provider = document.getElementById('provider_type').value;
             console.log('Selected provider:', provider);
-            
+
             const allFields = [
                 'aws-wasabi-fields',
                 'backblaze-fields',
@@ -522,7 +522,7 @@
                 'cloudflare-fields',
                 'hetzner-fields'
             ];
-            
+
             // Hide all fields first
             allFields.forEach(field => {
                 const element = document.getElementById(field);
@@ -534,7 +534,7 @@
                     });
                 }
             });
-            
+
             // Show the relevant fields
             let fieldsToShow;
             if (provider === 'aws' || provider === 'wasabi') {
@@ -542,30 +542,30 @@
             } else {
                 fieldsToShow = `${provider}-fields`;
             }
-            
+
             const selectedFields = document.getElementById(fieldsToShow);
             if (selectedFields) {
                 console.log('Showing fields for:', fieldsToShow);
                 selectedFields.classList.remove('hidden');
             }
-            
+
             // Update form submission handler based on provider
             const form = document.getElementById('configForm');
             form.onsubmit = async function(e) {
                 e.preventDefault();
-                
+
                 try {
                     // Get CSRF token
                     const csrfToken = getCsrfToken();
                     if (!csrfToken) {
                         throw new Error('CSRF token not found');
                     }
-                    
+
                     // Create form data
                     const formData = new FormData();
                     formData.set('csrf_token', csrfToken);
                     formData.set('provider_type', provider);
-                    
+
                     // Get fields based on provider type
                     let fields;
                     if (provider === 'aws' || provider === 'wasabi') {
@@ -602,25 +602,25 @@
                                 console.error(`Field element not found: ${key}`);
                                 throw new Error(`Configuration error: ${key} field not found`);
                             }
-                            
+
                             const value = element.value.trim();
                             if (!value) {
                                 const label = element.previousElementSibling.textContent;
                                 throw new Error(`${label} is required`);
                             }
-                            
+
                             // Special validation for bucket name
                             if (key === 'bucket') {
                                 if (!/^[a-z0-9][a-z0-9.-]{2,62}[a-z0-9]$/.test(value)) {
                                     throw new Error('Invalid bucket name format for DigitalOcean Spaces. Must be 3-63 characters, lowercase letters, numbers, dots, and hyphens only.');
                                 }
                             }
-                            
+
                             // Special validation for region
                             if (key === 'region' && !['nyc3', 'ams3', 'sgp1', 'fra1', 'sfo3'].includes(value)) {
                                 throw new Error('Invalid region for DigitalOcean Spaces');
                             }
-                            
+
                             formData.append(key, value);
                         }
                     } else if (provider === 'backblaze') {
@@ -637,31 +637,31 @@
                             'region': document.querySelector('#hetzner-fields select[name="region"]')
                         };
                     }
-                    
+
                     if (!fields) {
                         throw new Error('Provider not properly configured');
                     }
-                    
+
                     // Validate and add fields
                     for (const [key, element] of Object.entries(fields)) {
                         if (!element) {
                             console.error(`Field element not found: ${key}`);
                             throw new Error(`Configuration error: ${key} field not found`);
                         }
-                        
+
                         const value = element.value.trim();
                         console.log(`Field ${key}:`, value ? 'has value' : 'empty');
-                        
+
                         if (!value) {
                             const label = element.previousElementSibling.textContent;
                             throw new Error(`${label} is required`);
                         }
-                        
+
                         // Special validation for bucket name
                         if ((key === 'bucket' || key === 'bucket_name') && !/^[a-zA-Z0-9.\-_]{3,63}$/.test(value)) {
                             throw new Error('Invalid bucket name format. Bucket names must be between 3 and 63 characters and can only contain letters, numbers, dots, hyphens, and underscores.');
                         }
-                        
+
                         // Special validation for GCS credentials JSON
                         if (key === 'credentials_json') {
                             try {
@@ -670,17 +670,17 @@
                                 throw new Error('Invalid service account JSON format. Please check your JSON syntax.');
                             }
                         }
-                        
+
                         formData.set(key, value);
                     }
-                    
+
                     // Log form data (excluding sensitive values)
                     const formDataDebug = {};
                     formData.forEach((value, key) => {
                         formDataDebug[key] = key.includes('key') || key.includes('secret') || key.includes('credentials') ? '[REDACTED]' : value;
                     });
                     console.log('Form data being sent:', formDataDebug);
-                    
+
                     // Send request
                     const response = await fetch(form.action, {
                         method: 'POST',
@@ -690,20 +690,20 @@
                         },
                         credentials: 'same-origin'
                     });
-                    
+
                     const data = await response.json();
-                    
+
                     if (!response.ok || data.error) {
                         throw new Error(data.error || `Server error: ${response.status}`);
                     }
-                    
+
                     console.log('Configuration successful, redirecting...');
                     window.location.href = '/';
-                    
+
                 } catch (error) {
                     console.error('Error during form submission:', error);
                     showError(error.message || 'An error occurred while saving the configuration');
-                    
+
                     if (error.message.includes('CSRF')) {
                         await refreshCsrfToken();
                     }
@@ -719,10 +719,10 @@
                 providerSelect.value = 'cloudflare';
                 updateProviderFields();
             }
-            
+
             // Refresh CSRF token on page load
             await refreshCsrfToken();
         });
     </script>
 </body>
-</html> 
+</html>

@@ -16,6 +16,7 @@ def _load_env(var_name: str) -> str:
 def _load_optional_env(var_name: str, default_value: str) -> str:
     return os.environ.get(var_name, default_value)
 
+
 # Load the .env file
 DOT_ENV_FILE_PATH = Path(__file__).parent.parent / ".env"
 load_dotenv(DOT_ENV_FILE_PATH, override=True)
@@ -26,8 +27,8 @@ LLM_MODEL_ID = _load_env("LLM_MODEL_ID")
 LLM_API_KEY = _load_env("LLM_API_KEY")
 LLM_API_BASE_URL = _load_env("LLM_API_BASE_URL")
 LLM_API_VERSION = _load_env("LLM_API_VERSION")
-LLM_MAX_TOKEN = int(_load_optional_env("LLM_MAX_TOKEN","36000"))
-LLM_TEMPERATURE = float(_load_optional_env("LLM_TEMPERATURE","0.3"))
+LLM_MAX_TOKEN = int(_load_optional_env("LLM_MAX_TOKEN", "36000"))
+LLM_TEMPERATURE = float(_load_optional_env("LLM_TEMPERATURE", "0.3"))
 
 # Config
 READER_TYPE = _load_optional_env("READER_TYPE", "markitdown")

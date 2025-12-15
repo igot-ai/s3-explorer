@@ -4,10 +4,19 @@ import os
 import re
 from functools import wraps
 
-from shared._logging import get_logger
-from flask import Blueprint, jsonify, redirect, render_template, request, send_file, session, url_for
+from flask import (
+    Blueprint,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    session,
+    url_for,
+)
 from werkzeug.utils import secure_filename
 
+from shared._logging import get_logger
 from shared.storage import get_storage_provider
 
 logger = get_logger(__name__)
@@ -41,7 +50,9 @@ def get_current_provider():
         return None
 
     try:
-        return get_storage_provider(session["provider_type"], **session["provider_config"])
+        return get_storage_provider(
+            session["provider_type"], **session["provider_config"]
+        )
     except Exception as e:
         logger.error(f"Error creating storage provider: {str(e)}")
         return None
@@ -78,7 +89,9 @@ def configure_storage():
                 secret_key = request.form.get("secret_key", "").strip()
                 bucket = request.form.get("bucket", "").strip()
 
-                logger.debug(f"Cloudflare configuration - Account ID: {account_id}, Bucket: {bucket}")
+                logger.debug(
+                    f"Cloudflare configuration - Account ID: {account_id}, Bucket: {bucket}"
+                )
 
                 if not account_id:
                     return jsonify({"error": "Account ID is required"}), 400
@@ -116,7 +129,12 @@ def configure_storage():
                 if not bucket_name:
                     return jsonify({"error": "Bucket name is required"}), 400
                 if not re.match(r"^[a-z0-9-]{6,50}$", bucket_name):
-                    return jsonify({"error": "Invalid bucket name format for Backblaze B2"}), 400
+                    return (
+                        jsonify(
+                            {"error": "Invalid bucket name format for Backblaze B2"}
+                        ),
+                        400,
+                    )
 
                 credentials = {
                     "application_key_id": key_id,
@@ -138,9 +156,17 @@ def configure_storage():
                 if not region:
                     return jsonify({"error": "Region is required"}), 400
                 if not re.match(r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", bucket):
-                    return jsonify({"error": "Invalid bucket name format for Wasabi"}), 400
+                    return (
+                        jsonify({"error": "Invalid bucket name format for Wasabi"}),
+                        400,
+                    )
 
-                credentials = {"access_key": access_key, "secret_key": secret_key, "bucket": bucket, "region": region}
+                credentials = {
+                    "access_key": access_key,
+                    "secret_key": secret_key,
+                    "bucket": bucket,
+                    "region": region,
+                }
             elif provider_type == "gcs":
                 credentials_json = request.form.get("credentials_json", "").strip()
                 if not credentials_json:
@@ -156,9 +182,18 @@ def configure_storage():
                     if not bucket_name:
                         return jsonify({"error": "Bucket name is required"}), 400
 
-                    credentials = {"project_id": project_id, "bucket_name": bucket_name, "credentials_json": credentials_json}
+                    credentials = {
+                        "project_id": project_id,
+                        "bucket_name": bucket_name,
+                        "credentials_json": credentials_json,
+                    }
                 except json.JSONDecodeError as e:
-                    return jsonify({"error": f"Invalid service account JSON format: {str(e)}"}), 400
+                    return (
+                        jsonify(
+                            {"error": f"Invalid service account JSON format: {str(e)}"}
+                        ),
+                        400,
+                    )
             elif provider_type == "digitalocean":
                 access_key = request.form.get("access_key", "").strip()
                 secret_key = request.form.get("secret_key", "").strip()
@@ -174,11 +209,26 @@ def configure_storage():
                 if not region:
                     return jsonify({"error": "Region is required"}), 400
                 if not re.match(r"^[a-z0-9][a-z0-9.-]{2,62}[a-z0-9]$", bucket):
-                    return jsonify({"error": "Invalid bucket name format for DigitalOcean Spaces"}), 400
+                    return (
+                        jsonify(
+                            {
+                                "error": "Invalid bucket name format for DigitalOcean Spaces"
+                            }
+                        ),
+                        400,
+                    )
                 if region not in ["nyc3", "ams3", "sgp1", "fra1", "sfo3"]:
-                    return jsonify({"error": "Invalid region for DigitalOcean Spaces"}), 400
+                    return (
+                        jsonify({"error": "Invalid region for DigitalOcean Spaces"}),
+                        400,
+                    )
 
-                credentials = {"access_key": access_key, "secret_key": secret_key, "bucket": bucket, "region": region}
+                credentials = {
+                    "access_key": access_key,
+                    "secret_key": secret_key,
+                    "bucket": bucket,
+                    "region": region,
+                }
             elif provider_type == "hetzner":
                 access_key = request.form.get("access_key", "").strip()
                 secret_key = request.form.get("secret_key", "").strip()
@@ -194,11 +244,21 @@ def configure_storage():
                 if not region:
                     return jsonify({"error": "Region is required"}), 400
                 if not re.match(r"^[a-z0-9][a-z0-9.-]{2,62}[a-z0-9]$", bucket):
-                    return jsonify({"error": "Invalid bucket name format for Hetzner Storage"}), 400
+                    return (
+                        jsonify(
+                            {"error": "Invalid bucket name format for Hetzner Storage"}
+                        ),
+                        400,
+                    )
                 if region not in ["nbg1", "fsn1", "hel1", "ash", "hil", "sin"]:
                     return jsonify({"error": "Invalid region for Hetzner Storage"}), 400
 
-                credentials = {"access_key": access_key, "secret_key": secret_key, "bucket": bucket, "region": region}
+                credentials = {
+                    "access_key": access_key,
+                    "secret_key": secret_key,
+                    "bucket": bucket,
+                    "region": region,
+                }
             else:
                 return jsonify({"error": "Invalid storage provider selected"}), 400
 
@@ -217,7 +277,9 @@ def configure_storage():
             else:
                 session["bucket"] = credentials.get("bucket")
 
-            logger.info(f"Successfully configured {provider_type} provider with bucket: {session['bucket']}")
+            logger.info(
+                f"Successfully configured {provider_type} provider with bucket: {session['bucket']}"
+            )
             return jsonify({"message": "Configuration updated successfully"}), 200
 
         except Exception as e:
@@ -266,7 +328,9 @@ def download(filename):
 
     try:
         file_obj = provider.download_file(filename)
-        return send_file(file_obj, download_name=os.path.basename(filename), as_attachment=True)
+        return send_file(
+            file_obj, download_name=os.path.basename(filename), as_attachment=True
+        )
     except Exception as e:
         logger.error(f"Error downloading file: {str(e)}")
         return jsonify({"error": str(e)}), 500
@@ -290,7 +354,9 @@ def list_files():
             try:
                 file_name = file["name"]
                 file_size = file.get("size", 0)
-                is_folder_marker = (file_size == 0 and file.get("mime_type") is None) or file_name.endswith("/")
+                is_folder_marker = (
+                    file_size == 0 and file.get("mime_type") is None
+                ) or file_name.endswith("/")
 
                 if prefix and file_name.startswith(prefix):
                     relative_path = file_name[len(prefix) :]
@@ -307,24 +373,50 @@ def list_files():
                     if full_folder_path not in folders_seen:
                         folders_seen.add(full_folder_path)
                         file_data.append(
-                            {"name": full_folder_path, "size": 0, "preview_url": None, "mime_type": "folder", "type": "folder"}
+                            {
+                                "name": full_folder_path,
+                                "size": 0,
+                                "preview_url": None,
+                                "mime_type": "folder",
+                                "type": "folder",
+                            }
                         )
                     continue
 
                 if is_folder_marker:
-                    folder_path = file_name if file_name.endswith("/") else file_name + "/"
+                    folder_path = (
+                        file_name if file_name.endswith("/") else file_name + "/"
+                    )
                     if folder_path not in folders_seen:
                         folders_seen.add(folder_path)
                         file_data.append(
-                            {"name": folder_path, "size": 0, "preview_url": None, "mime_type": "folder", "type": "folder"}
+                            {
+                                "name": folder_path,
+                                "size": 0,
+                                "preview_url": None,
+                                "mime_type": "folder",
+                                "type": "folder",
+                            }
                         )
                 else:
                     mime_type, _ = mimetypes.guess_type(file_name)
                     preview_url = None
-                    if mime_type and (mime_type.startswith("image/") or mime_type == "application/pdf" or mime_type.startswith("video/")):
+                    if mime_type and (
+                        mime_type.startswith("image/")
+                        or mime_type == "application/pdf"
+                        or mime_type.startswith("video/")
+                    ):
                         preview_url = provider.get_file_url(file_name)
 
-                    file_data.append({"name": file_name, "size": file_size, "preview_url": preview_url, "mime_type": mime_type, "type": "file"})
+                    file_data.append(
+                        {
+                            "name": file_name,
+                            "size": file_size,
+                            "preview_url": preview_url,
+                            "mime_type": mime_type,
+                            "type": "file",
+                        }
+                    )
             except Exception as e:
                 logger.warning(f"Error processing file {file.get('name')}: {str(e)}")
                 continue
@@ -333,7 +425,10 @@ def list_files():
 
     except Exception as e:
         logger.error(f"Error listing files: {str(e)}")
-        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+        return (
+            jsonify({"error": "An unexpected error occurred", "details": str(e)}),
+            500,
+        )
 
 
 @s3_explore_bp.route("/delete/<path:filename>", methods=["DELETE"])
@@ -366,10 +461,20 @@ def create_folder():
             return jsonify({"error": "Folder name is required"}), 400
 
         if not hasattr(provider, "create_folder"):
-            return jsonify({"error": "Folder creation not supported by this storage provider"}), 400
+            return (
+                jsonify(
+                    {"error": "Folder creation not supported by this storage provider"}
+                ),
+                400,
+            )
 
         provider.create_folder(folder_name)
-        return jsonify({"message": "Folder created successfully", "folder_name": folder_name}), 200
+        return (
+            jsonify(
+                {"message": "Folder created successfully", "folder_name": folder_name}
+            ),
+            200,
+        )
     except Exception as e:
         logger.error(f"Error creating folder: {str(e)}")
         return jsonify({"error": str(e)}), 500
@@ -390,10 +495,20 @@ def delete_folder():
             return jsonify({"error": "Folder name is required"}), 400
 
         if not hasattr(provider, "delete_folder"):
-            return jsonify({"error": "Folder deletion not supported by this storage provider"}), 400
+            return (
+                jsonify(
+                    {"error": "Folder deletion not supported by this storage provider"}
+                ),
+                400,
+            )
 
         provider.delete_folder(folder_name)
-        return jsonify({"message": "Folder deleted successfully", "folder_name": folder_name}), 200
+        return (
+            jsonify(
+                {"message": "Folder deleted successfully", "folder_name": folder_name}
+            ),
+            200,
+        )
     except Exception as e:
         logger.error(f"Error deleting folder: {str(e)}")
         return jsonify({"error": str(e)}), 500
@@ -425,5 +540,3 @@ def share_file(filename):
 
 
 __all__ = ["s3_explore_bp"]
-
-

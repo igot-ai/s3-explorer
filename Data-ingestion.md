@@ -98,4 +98,3 @@ Component Interaction Flow
           | CollectionHandler|  --> Upload to an APIProvider to manage collection
           +------------------+
 ---
-

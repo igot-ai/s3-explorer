@@ -1,12 +1,12 @@
 """Core components for the ingestion pipeline."""
 
 from .models import (
-    FileStatus,
     Catalog,
+    ClassificationResult,
     FileContext,
+    FileStatus,
     FolderContext,
     IngestionJobConfig,
-    ClassificationResult,
     PipelineResult,
 )
 
@@ -19,4 +19,3 @@ __all__ = [
     "ClassificationResult",
     "PipelineResult",
 ]
-

@@ -258,4 +258,3 @@ The implementation is:
 - [PyMuPDF Documentation](https://pymupdf.readthedocs.io/) - PDF processing
 - [OpenAI API](https://platform.openai.com/docs/) - LLM classification
 - [Anthropic API](https://docs.anthropic.com/) - Claude models
-

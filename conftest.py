@@ -26,5 +26,3 @@ MODULES = SRC / "modules"
 
 _add_to_syspath(SRC)
 _add_to_syspath(MODULES)
-
-

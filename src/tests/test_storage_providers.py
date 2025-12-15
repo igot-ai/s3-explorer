@@ -10,13 +10,12 @@ import pytest
 
 from shared.storage import (
     AWSS3Provider,
-    WasabiProvider,
     CloudflareR2Provider,
     DigitalOceanSpacesProvider,
     HetznerStorageProvider,
+    WasabiProvider,
     get_storage_provider,
 )
-
 
 # Test data
 TEST_FILE_CONTENT = b"test file content"
@@ -31,30 +30,32 @@ TEST_ACCOUNT_ID = "test-account-123"
 class TestAWSProvider:
     """Test AWS S3 Provider"""
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_init(self, mock_s3fs_cls):
         """Test AWS provider initialization"""
         provider = AWSS3Provider(
             access_key=TEST_ACCESS_KEY,
             secret_key=TEST_SECRET_KEY,
             bucket=TEST_BUCKET,
-            region=TEST_REGION
+            region=TEST_REGION,
         )
 
         assert provider.bucket == TEST_BUCKET
         mock_s3fs_cls.assert_called_once_with(
             key=TEST_ACCESS_KEY,
             secret=TEST_SECRET_KEY,
-            client_kwargs={'region_name': TEST_REGION}
+            client_kwargs={"region_name": TEST_REGION},
         )
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_upload_file(self, mock_s3fs_cls):
         """Test file upload"""
         mock_fs = Mock()
         mock_s3fs_cls.return_value = mock_fs
 
-        provider = AWSS3Provider(TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION)
+        provider = AWSS3Provider(
+            TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION
+        )
         file_obj = io.BytesIO(TEST_FILE_CONTENT)
 
         mock_writer = Mock()
@@ -68,13 +69,15 @@ class TestAWSProvider:
         mock_fs.open.assert_called_once_with(f"{TEST_BUCKET}/{TEST_FILENAME}", "wb")
         mock_writer.write.assert_called_once_with(TEST_FILE_CONTENT)
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_download_file(self, mock_s3fs_cls):
         """Test file download"""
         mock_fs = Mock()
         mock_s3fs_cls.return_value = mock_fs
 
-        provider = AWSS3Provider(TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION)
+        provider = AWSS3Provider(
+            TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION
+        )
 
         mock_reader = Mock()
         mock_reader.read.return_value = TEST_FILE_CONTENT
@@ -89,7 +92,7 @@ class TestAWSProvider:
         assert result.read() == TEST_FILE_CONTENT
         mock_fs.open.assert_called_once_with(f"{TEST_BUCKET}/{TEST_FILENAME}", "rb")
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_list_files(self, mock_s3fs_cls):
         """Test listing files"""
         mock_fs = Mock()
@@ -99,75 +102,87 @@ class TestAWSProvider:
             {"type": "file", "Key": f"{TEST_BUCKET}/file2.txt", "Size": 200},
         ]
 
-        provider = AWSS3Provider(TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION)
+        provider = AWSS3Provider(
+            TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION
+        )
         files = provider.list_files()
 
         assert len(files) == 2
-        assert files[0]['name'] == 'file1.txt'
-        assert files[0]['size'] == 100
-        assert files[1]['name'] == 'file2.txt'
-        assert files[1]['size'] == 200
+        assert files[0]["name"] == "file1.txt"
+        assert files[0]["size"] == 100
+        assert files[1]["name"] == "file2.txt"
+        assert files[1]["size"] == 200
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_list_files_with_prefix(self, mock_s3fs_cls):
         """Test listing files with prefix"""
         mock_fs = Mock()
         mock_s3fs_cls.return_value = mock_fs
         mock_fs.ls.return_value = []
 
-        provider = AWSS3Provider(TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION)
-        provider.list_files(prefix='folder/')
+        provider = AWSS3Provider(
+            TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION
+        )
+        provider.list_files(prefix="folder/")
 
         mock_fs.ls.assert_called_once_with(f"{TEST_BUCKET}/folder/", detail=True)
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_delete_file(self, mock_s3fs_cls):
         """Test file deletion"""
         mock_fs = Mock()
         mock_s3fs_cls.return_value = mock_fs
 
-        provider = AWSS3Provider(TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION)
+        provider = AWSS3Provider(
+            TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION
+        )
         provider.delete_file(TEST_FILENAME)
 
         mock_fs.rm.assert_called_once_with(f"{TEST_BUCKET}/{TEST_FILENAME}")
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_get_file_url(self, mock_s3fs_cls):
         """Test presigned URL generation"""
         mock_fs = Mock()
         mock_s3fs_cls.return_value = mock_fs
-        mock_fs.sign.return_value = 'https://test-url.com/file'
+        mock_fs.sign.return_value = "https://test-url.com/file"
 
-        provider = AWSS3Provider(TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION)
+        provider = AWSS3Provider(
+            TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION
+        )
         url = provider.get_file_url(TEST_FILENAME, expires_in=3600)
 
-        assert url == 'https://test-url.com/file'
-        mock_fs.sign.assert_called_once_with(f"{TEST_BUCKET}/{TEST_FILENAME}", expiration=3600)
+        assert url == "https://test-url.com/file"
+        mock_fs.sign.assert_called_once_with(
+            f"{TEST_BUCKET}/{TEST_FILENAME}", expiration=3600
+        )
 
 
 class TestWasabiProvider:
     """Test Wasabi Provider"""
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_init_with_correct_endpoint(self, mock_s3fs_cls):
         """Test Wasabi provider initialization with correct endpoint"""
         provider = WasabiProvider(
             access_key=TEST_ACCESS_KEY,
             secret_key=TEST_SECRET_KEY,
             bucket=TEST_BUCKET,
-            region='us-west-1'
+            region="us-west-1",
         )
 
         assert provider.bucket == TEST_BUCKET
         mock_s3fs_cls.assert_called_once()
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_upload_file(self, mock_s3fs_cls):
         """Test Wasabi file upload (delegates to base implementation)."""
         mock_fs = Mock()
         mock_s3fs_cls.return_value = mock_fs
 
-        provider = WasabiProvider(TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION)
+        provider = WasabiProvider(
+            TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION
+        )
         file_obj = io.BytesIO(TEST_FILE_CONTENT)
 
         mock_writer = Mock()
@@ -184,14 +199,14 @@ class TestWasabiProvider:
 class TestCloudflareR2Provider:
     """Test Cloudflare R2 Provider"""
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_init_with_account_id(self, mock_s3fs_cls):
         """Test Cloudflare R2 provider initialization"""
         provider = CloudflareR2Provider(
             account_id=TEST_ACCOUNT_ID,
             access_key=TEST_ACCESS_KEY,
             secret_key=TEST_SECRET_KEY,
-            bucket=TEST_BUCKET
+            bucket=TEST_BUCKET,
         )
 
         assert provider.bucket == TEST_BUCKET
@@ -202,14 +217,14 @@ class TestCloudflareR2Provider:
 class TestDigitalOceanProvider:
     """Test DigitalOcean Spaces Provider"""
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_init_with_correct_endpoint(self, mock_s3fs_cls):
         """Test DigitalOcean provider initialization"""
         provider = DigitalOceanSpacesProvider(
             access_key=TEST_ACCESS_KEY,
             secret_key=TEST_SECRET_KEY,
             bucket=TEST_BUCKET,
-            region='nyc3'
+            region="nyc3",
         )
 
         assert provider.bucket == TEST_BUCKET
@@ -219,14 +234,14 @@ class TestDigitalOceanProvider:
 class TestHetznerProvider:
     """Test Hetzner Storage Provider"""
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_init_with_correct_endpoint(self, mock_s3fs_cls):
         """Test Hetzner provider initialization"""
         provider = HetznerStorageProvider(
             access_key=TEST_ACCESS_KEY,
             secret_key=TEST_SECRET_KEY,
             bucket=TEST_BUCKET,
-            region='nbg1'
+            region="nbg1",
         )
 
         assert provider.bucket == TEST_BUCKET
@@ -236,82 +251,84 @@ class TestHetznerProvider:
 class TestProviderFactory:
     """Test get_storage_provider factory function"""
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_get_aws_provider(self, _mock_s3fs_cls):
         """Test factory creates AWS provider"""
         provider = get_storage_provider(
-            'aws',
+            "aws",
             access_key=TEST_ACCESS_KEY,
             secret_key=TEST_SECRET_KEY,
             bucket=TEST_BUCKET,
-            region=TEST_REGION
+            region=TEST_REGION,
         )
         assert isinstance(provider, AWSS3Provider)
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_get_wasabi_provider(self, _mock_s3fs_cls):
         """Test factory creates Wasabi provider"""
         provider = get_storage_provider(
-            'wasabi',
+            "wasabi",
             access_key=TEST_ACCESS_KEY,
             secret_key=TEST_SECRET_KEY,
             bucket=TEST_BUCKET,
-            region=TEST_REGION
+            region=TEST_REGION,
         )
         assert isinstance(provider, WasabiProvider)
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_get_cloudflare_provider(self, _mock_s3fs_cls):
         """Test factory creates Cloudflare R2 provider"""
         provider = get_storage_provider(
-            'cloudflare',
+            "cloudflare",
             account_id=TEST_ACCOUNT_ID,
             access_key=TEST_ACCESS_KEY,
             secret_key=TEST_SECRET_KEY,
-            bucket=TEST_BUCKET
+            bucket=TEST_BUCKET,
         )
         assert isinstance(provider, CloudflareR2Provider)
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_get_digitalocean_provider(self, _mock_s3fs_cls):
         """Test factory creates DigitalOcean provider"""
         provider = get_storage_provider(
-            'digitalocean',
+            "digitalocean",
             access_key=TEST_ACCESS_KEY,
             secret_key=TEST_SECRET_KEY,
             bucket=TEST_BUCKET,
-            region=TEST_REGION
+            region=TEST_REGION,
         )
         assert isinstance(provider, DigitalOceanSpacesProvider)
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_get_hetzner_provider(self, _mock_s3fs_cls):
         """Test factory creates Hetzner provider"""
         provider = get_storage_provider(
-            'hetzner',
+            "hetzner",
             access_key=TEST_ACCESS_KEY,
             secret_key=TEST_SECRET_KEY,
             bucket=TEST_BUCKET,
-            region=TEST_REGION
+            region=TEST_REGION,
         )
         assert isinstance(provider, HetznerStorageProvider)
 
     def test_invalid_provider_type(self):
         """Test factory raises error for invalid provider"""
         with pytest.raises(ValueError, match="Unsupported storage provider"):
-            get_storage_provider('invalid_provider')
+            get_storage_provider("invalid_provider")
 
 
 class TestEdgeCases:
     """Test edge cases and error handling"""
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_empty_file_upload(self, mock_s3fs_cls):
         """Test uploading empty file"""
         mock_fs = Mock()
         mock_s3fs_cls.return_value = mock_fs
 
-        provider = AWSS3Provider(TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION)
+        provider = AWSS3Provider(
+            TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION
+        )
         empty_file = io.BytesIO(b"")
 
         mock_writer = Mock()
@@ -325,25 +342,29 @@ class TestEdgeCases:
         mock_fs.open.assert_called_once_with(f"{TEST_BUCKET}/empty.txt", "wb")
         mock_writer.write.assert_called_once_with(b"")
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_list_files_empty_bucket(self, mock_s3fs_cls):
         """Test listing files in empty bucket"""
         mock_fs = Mock()
         mock_s3fs_cls.return_value = mock_fs
         mock_fs.ls.side_effect = FileNotFoundError()
 
-        provider = AWSS3Provider(TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION)
+        provider = AWSS3Provider(
+            TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION
+        )
         files = provider.list_files()
 
         assert files == []
 
-    @patch('shared.storage.s3fs.S3FileSystem')
+    @patch("shared.storage.s3fs.S3FileSystem")
     def test_large_file_handling(self, mock_s3fs_cls):
         """Test handling large files"""
         mock_fs = Mock()
         mock_s3fs_cls.return_value = mock_fs
 
-        provider = AWSS3Provider(TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION)
+        provider = AWSS3Provider(
+            TEST_ACCESS_KEY, TEST_SECRET_KEY, TEST_BUCKET, TEST_REGION
+        )
         large_content = b"x" * (10 * 1024 * 1024)  # 10MB
         large_file = io.BytesIO(large_content)
 
@@ -359,5 +380,5 @@ class TestEdgeCases:
         mock_writer.write.assert_called_once_with(large_content)
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

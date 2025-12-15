@@ -33,4 +33,3 @@ source = S3SourceConnector(provider)
 handler = S3CollectionHandler(provider)
 classifier = LLMClassifier(provider="openai", api_key="...")
 ```
-

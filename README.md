@@ -74,7 +74,7 @@ The Cloud Storage Manager supports multiple cloud storage providers, giving you 
 
 ### Installation
 
-1. Clone the repository: 
+1. Clone the repository:
 ```bash
 git clone https://github.com/rohitg00/s3-file-share-for-free.git
 cd s3-file-share-for-free
@@ -167,7 +167,7 @@ The application uses:
    - Sign in with your credentials
 
 2. **Create New Application**
-   - Click on "New Application" 
+   - Click on "New Application"
    - Select your Git repository
    - Choose the branch you want to deploy
    - ✅ Automatic Deployments when commits are pushed to the repository

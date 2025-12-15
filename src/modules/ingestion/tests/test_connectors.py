@@ -1,7 +1,6 @@
 """Unit tests for ingestion core connectors."""
 
 import io
-
 from unittest.mock import Mock
 
 from ingestion.core.connectors.s3_connector import S3SourceConnector
@@ -34,7 +33,10 @@ class TestS3SourceConnector:
         connector = S3SourceConnector(provider)
         files = list(connector.walk_folder("root/folder/", recursive=False))
 
-        assert [f.source_path for f in files] == ["root/folder/a.pdf", "root/folder/b.docx"]
+        assert [f.source_path for f in files] == [
+            "root/folder/a.pdf",
+            "root/folder/b.docx",
+        ]
         assert [f.file_type for f in files] == ["pdf", "docx"]
 
     def test_walk_folder_recursive_descends_subfolders(self):
@@ -78,5 +80,3 @@ class TestS3SourceConnector:
         connector = S3SourceConnector(provider)
         assert connector.file_exists("root/folder/a.pdf") is True
         assert connector.file_exists("root/folder/missing.pdf") is False
-
-

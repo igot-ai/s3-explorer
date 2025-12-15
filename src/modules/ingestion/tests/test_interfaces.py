@@ -1,21 +1,21 @@
 """Unit tests for abstract interface classes."""
 
-from pathlib import Path
 from io import BytesIO
-from typing import Iterator, BinaryIO, List, Dict, Any
-from ingestion.core.connectors.base import SourceConnector
-from ingestion.core.processors.base import FileProcessor, FileProcessorChain
-from ingestion.core.readers.base import DocumentReader
+from pathlib import Path
+from typing import Any, BinaryIO, Dict, Iterator, List
+
 from ingestion.core.classifiers.base import Classifier
-from ingestion.core.handlers.base import CollectionHandler, APICollectionHandler
+from ingestion.core.connectors.base import SourceConnector
+from ingestion.core.handlers.base import APICollectionHandler, CollectionHandler
 from ingestion.core.models import (
-    FileContext,
-    FolderContext,
     Catalog,
     ClassificationResult,
+    FileContext,
     FileStatus,
+    FolderContext,
 )
-
+from ingestion.core.processors.base import FileProcessor, FileProcessorChain
+from ingestion.core.readers.base import DocumentReader
 
 # Mock implementations for testing
 
@@ -26,7 +26,9 @@ class MockSourceConnector(SourceConnector):
     def list_folders(self, prefix: str = "") -> List[str]:
         return [f"{prefix}folder1/", f"{prefix}folder2/"]
 
-    def walk_folder(self, folder_path: str, recursive: bool = True) -> Iterator[FileContext]:
+    def walk_folder(
+        self, folder_path: str, recursive: bool = True
+    ) -> Iterator[FileContext]:
         yield FileContext(source_path=f"{folder_path}file1.pdf")
         yield FileContext(source_path=f"{folder_path}file2.docx")
 
@@ -51,7 +53,7 @@ class MockFileProcessor(FileProcessor):
             source_path=file_context.source_path,
             local_path=str(output_dir / "converted.pdf"),
             file_type="pdf",
-            status=FileStatus.CONVERTED
+            status=FileStatus.CONVERTED,
         )
         return [converted]
 
@@ -93,6 +95,7 @@ class MockClassifier(Classifier):
             reason="Mock classification",
         )
 
+
 class MockCollectionHandler(CollectionHandler):
     """Mock implementation of CollectionHandler for testing."""
 
@@ -101,7 +104,7 @@ class MockCollectionHandler(CollectionHandler):
         file_context: FileContext,
         catalog: Catalog,
         file_stream: BinaryIO,
-        metadata: Dict[str, Any]
+        metadata: Dict[str, Any],
     ) -> str:
         return f"s3://bucket/{catalog.id}/{file_context.source_path}"
 
@@ -111,11 +114,13 @@ class MockCollectionHandler(CollectionHandler):
         catalog: Catalog,
         file_stream: BinaryIO,
         file_metadata: Dict[str, Any],
-        folder_context: FolderContext
+        folder_context: FolderContext,
     ) -> str:
         return f"s3://bucket/{catalog.id}/{file_context.source_path}"
 
-    def build_destination_path(self, file_context: FileContext, catalog: Catalog) -> str:
+    def build_destination_path(
+        self, file_context: FileContext, catalog: Catalog
+    ) -> str:
         return f"collections/{catalog.id}/{file_context.source_path}"
 
 
@@ -134,7 +139,9 @@ class MockAPICollectionHandler(APICollectionHandler):
     def create_collection(self, catalog: Catalog) -> Dict:
         return {"id": catalog.id, "name": catalog.content}
 
-    def update_collection_metadata(self, catalog_id: str, metadata: Dict[str, Any]) -> bool:
+    def update_collection_metadata(
+        self, catalog_id: str, metadata: Dict[str, Any]
+    ) -> bool:
         return True
 
     def is_authenticated(self) -> bool:
@@ -145,7 +152,7 @@ class MockAPICollectionHandler(APICollectionHandler):
         file_context: FileContext,
         catalog: Catalog,
         file_stream: BinaryIO,
-        metadata: Dict[str, Any]
+        metadata: Dict[str, Any],
     ) -> str:
         return f"api://collection/{catalog.id}/file/{file_context.source_path}"
 
@@ -155,11 +162,13 @@ class MockAPICollectionHandler(APICollectionHandler):
         catalog: Catalog,
         file_stream: BinaryIO,
         file_metadata: Dict[str, Any],
-        folder_context: FolderContext
+        folder_context: FolderContext,
     ) -> str:
         return f"api://collection/{catalog.id}/file/{file_context.source_path}"
 
-    def build_destination_path(self, file_context: FileContext, catalog: Catalog) -> str:
+    def build_destination_path(
+        self, file_context: FileContext, catalog: Catalog
+    ) -> str:
         return f"api://{catalog.id}/{file_context.source_path}"
 
 
@@ -185,7 +194,7 @@ class TestSourceConnector:
         connector = MockSourceConnector()
         file_obj = connector.download_file("test.pdf")
         # Check if it's a file-like object
-        assert hasattr(file_obj, 'read')
+        assert hasattr(file_obj, "read")
         content = file_obj.read()
         assert content == b"mock file content"
 
@@ -207,7 +216,7 @@ class TestFileProcessor:
         processor = MockFileProcessor()
         docx_file = FileContext(source_path="test.docx")
         pdf_file = FileContext(source_path="test.pdf")
-        
+
         assert processor.can_process(docx_file) is True
         assert processor.can_process(pdf_file) is False
 
@@ -215,7 +224,7 @@ class TestFileProcessor:
         processor = MockFileProcessor()
         file_ctx = FileContext(source_path="test.docx")
         output_dir = Path("/tmp")
-        
+
         results = processor.process(file_ctx, output_dir)
         assert len(results) == 1
         assert results[0].status == FileStatus.CONVERTED
@@ -233,20 +242,20 @@ class TestFileProcessorChain:
     def test_process_with_matching_processor(self):
         processor = MockFileProcessor()
         chain = FileProcessorChain([processor])
-        
+
         file_ctx = FileContext(source_path="test.docx")
         results = chain.process(file_ctx, Path("/tmp"))
-        
+
         assert len(results) == 1
         assert results[0].status == FileStatus.CONVERTED
 
     def test_process_with_no_matching_processor(self):
         processor = MockFileProcessor()
         chain = FileProcessorChain([processor])
-        
+
         file_ctx = FileContext(source_path="test.pdf")
         results = chain.process(file_ctx, Path("/tmp"))
-        
+
         # Should return original file
         assert len(results) == 1
         assert results[0].source_path == "test.pdf"
@@ -254,7 +263,7 @@ class TestFileProcessorChain:
     def test_add_processor(self):
         chain = FileProcessorChain([])
         assert len(chain.get_processors()) == 0
-        
+
         processor = MockFileProcessor()
         chain.add_processor(processor)
         assert len(chain.get_processors()) == 1
@@ -267,7 +276,7 @@ class TestDocumentReader:
         reader = MockDocumentReader()
         pdf_path = Path("test.pdf")
         docx_path = Path("test.docx")
-        
+
         assert reader.can_read(pdf_path) is True
         assert reader.can_read(docx_path) is False
 
@@ -301,10 +310,11 @@ class TestClassifier:
         classifier = MockClassifier()
         catalog = Catalog(id="test", information="Test", content="Test catalog")
         result = classifier.classify("document text", "file.pdf", [catalog])
-        
+
         assert isinstance(result, ClassificationResult)
         assert result.category_id == "test"
         assert 0 <= result.confidence <= 5
+
 
 class TestCollectionHandler:
     """Test CollectionHandler interface."""
@@ -315,7 +325,7 @@ class TestCollectionHandler:
         catalog = Catalog(id="test", information="Test", content="Test")
         file_stream = BytesIO(b"content")
         metadata = {"field1": "value1"}
-        
+
         result = handler.upload(file_ctx, catalog, file_stream, metadata)
         assert isinstance(result, str)
         assert "test.pdf" in result
@@ -326,7 +336,7 @@ class TestCollectionHandler:
         catalog = Catalog(id="test", information="Test", content="Test")
         folder_ctx = FolderContext(folder_path="folder1/")
         file_stream = BytesIO(b"content")
-        
+
         result = handler.upload_with_folder_context(
             file_ctx, catalog, file_stream, {}, folder_ctx
         )
@@ -335,12 +345,8 @@ class TestCollectionHandler:
     def test_build_destination_path(self):
         handler = MockCollectionHandler()
         file_ctx = FileContext(source_path="test.pdf")
-        catalog = Catalog(
-            id="test",
-            information="Test",
-            content="Test"
-        )
-        
+        catalog = Catalog(id="test", information="Test", content="Test")
+
         path = handler.build_destination_path(file_ctx, catalog)
         assert "collections/test/" in path
         assert "test.pdf" in path
@@ -348,7 +354,7 @@ class TestCollectionHandler:
     def test_prepare_metadata(self):
         handler = MockCollectionHandler()
         file_metadata = {"file_field": "value"}
-        
+
         prepared = handler.prepare_metadata(file_metadata)
         assert "file_field" in prepared
         assert prepared["file_field"] == "value"
@@ -360,21 +366,21 @@ class TestAPICollectionHandler:
     def test_authenticate(self):
         handler = MockAPICollectionHandler()
         assert handler.is_authenticated() is False
-        
+
         handler.authenticate()
         assert handler.is_authenticated() is True
 
     def test_get_collection(self):
         handler = MockAPICollectionHandler()
         collection = handler.get_collection("test_id")
-        
+
         assert isinstance(collection, dict)
         assert collection["id"] == "test_id"
 
     def test_create_collection(self):
         handler = MockAPICollectionHandler()
         catalog = Catalog(id="test", information="Test", content="Test Catalog")
-        
+
         collection = handler.create_collection(catalog)
         assert isinstance(collection, dict)
         assert collection["id"] == "test"
@@ -382,7 +388,6 @@ class TestAPICollectionHandler:
     def test_update_collection_metadata(self):
         handler = MockAPICollectionHandler()
         metadata = {"field1": "value1"}
-        
+
         result = handler.update_collection_metadata("test_id", metadata)
         assert result is True
-

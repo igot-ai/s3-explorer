@@ -1,9 +1,11 @@
 """Core data models for the ingestion pipeline."""
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Union
-from pydantic import BaseModel, field_validator
 from enum import Enum
+from typing import Any, Dict, List, Optional, Union
+
+from pydantic import BaseModel, field_validator
+
 from shared._logging import get_logger
 
 logger = get_logger(__name__)
@@ -11,6 +13,7 @@ logger = get_logger(__name__)
 
 class FileStatus(Enum):
     """Status of a file in the ingestion pipeline."""
+
     PENDING = "pending"
     PROCESSING = "processing"
     CONVERTED = "converted"
@@ -22,7 +25,7 @@ class FileStatus(Enum):
 @dataclass
 class Catalog:
     """Represents a document collection/category.
-    
+
     Attributes:
         id: Unique identifier for the catalog
         information: Classification instruction for LLM (how to identify documents)
@@ -30,6 +33,7 @@ class Catalog:
         fetch_all_metadata: If True, aggregate metadata from all catalogs for the folder
         metadata_scan: Schema of metadata fields to extract (field_name -> type/description)
     """
+
     id: str
     information: str
     content: str
@@ -57,9 +61,10 @@ class Catalog:
 @dataclass
 class FileContext:
     """Represents a file being processed through the pipeline.
-    
+
     Tracks the complete lifecycle of a file from source to destination.
     """
+
     source_path: str
     local_path: Optional[str] = None
     file_type: str = ""
@@ -82,13 +87,18 @@ class FileContext:
 @dataclass
 class FolderContext:
     """Tracks all files within a source folder.
-    
+
     Maintains state for folder-level operations and metadata aggregation.
     """
+
     folder_path: str
     files: List[FileContext] = field(default_factory=list)
-    catalog_summary: Dict[str, List[str]] = field(default_factory=dict)  # catalog_id -> [file_paths]
-    aggregated_metadata: Dict[str, Dict[str, Any]] = field(default_factory=dict)  # catalog_id -> metadata
+    catalog_summary: Dict[str, List[str]] = field(
+        default_factory=dict
+    )  # catalog_id -> [file_paths]
+    aggregated_metadata: Dict[str, Dict[str, Any]] = field(
+        default_factory=dict
+    )  # catalog_id -> metadata
 
     def add_file(self, file_context: FileContext) -> None:
         """Add a file to this folder context."""
@@ -117,9 +127,10 @@ class FolderContext:
 @dataclass
 class IngestionJobConfig:
     """Configuration for a single ingestion job.
-    
+
     Defines what to process and how to process it.
     """
+
     source_path: str
     catalogs: List[Catalog]
     pages_to_read: int = 3
@@ -145,14 +156,15 @@ class IngestionJobConfig:
 
 class ClassificationResult(BaseModel):
     """Result of document classification.
-    
+
     Contains the classified catalog and confidence information.
     """
+
     category_id: str
     confidence: int  # 1-5 scale
     reason: str
-    
-    @field_validator('confidence', mode='before')
+
+    @field_validator("confidence", mode="before")
     @classmethod
     def coerce_confidence(cls, v: Union[str, int, float]) -> int:
         """Convert confidence to int, handling string and float inputs from LLM."""
@@ -176,9 +188,10 @@ class ClassificationResult(BaseModel):
 @dataclass
 class PipelineResult:
     """Result of a complete pipeline execution.
-    
+
     Contains summary statistics and all folder contexts.
     """
+
     total_folders: int
     total_files: int
     successful: int
@@ -202,4 +215,3 @@ class PipelineResult:
             "success_rate": f"{self.get_success_rate():.2f}%",
             "execution_time": f"{self.execution_time_seconds:.2f}s",
         }
-

@@ -1,9 +1,10 @@
 import json
 import os
 import re
-from shared._logging import get_logger
 from pathlib import Path
 from typing import Any, Dict
+
+from shared._logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -41,7 +42,9 @@ class FileHelper:
 
         # First, remove markdown image syntax and HTML comments
         text = re.sub(r"!\[.*?\]\(.*?\)", "", text)  # Remove ![](image.jpg) syntax
-        text = re.sub(r"<!-- Slide number: \d+ -->", "", text)  # Remove slide number comments
+        text = re.sub(
+            r"<!-- Slide number: \d+ -->", "", text
+        )  # Remove slide number comments
         text = re.sub(r"### Notes:", "", text)  # Remove notes headers
 
         # Remove whitespace sequences and newline sequences

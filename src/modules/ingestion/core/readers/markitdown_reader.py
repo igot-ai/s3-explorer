@@ -1,13 +1,15 @@
-import pymupdf
 from pathlib import Path
 
-from ingestion.core.readers.extractor.markitdown_file_extraction import MarkitdownFileExtractor
+import pymupdf
 from ingestion.core.readers.base import DocumentReader
+from ingestion.core.readers.extractor.markitdown_file_extraction import (
+    MarkitdownFileExtractor,
+)
 
 
 class MarkitdownReader(DocumentReader):
     """Document reader that uses MarkItDown for text extraction.
-    
+
     Supports PDF files via MarkitdownFileExtractor.
     """
 
@@ -21,14 +23,14 @@ class MarkitdownReader(DocumentReader):
 
     def get_supported_formats(self) -> list[str]:
         """Get list of supported file formats.
-        
+
         Returns:
             List of extensions
         """
-        return ['.pdf']
+        return [".pdf"]
 
     def get_page_count(self, file_path: Path) -> int:
-        """Get total number of pages in the document."""        
+        """Get total number of pages in the document."""
         doc = pymupdf.open(str(file_path))
         page_count = len(doc)
         doc.close()

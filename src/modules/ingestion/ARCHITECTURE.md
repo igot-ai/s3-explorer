@@ -8,7 +8,7 @@ A production-ready, self-contained data ingestion framework for processing docum
 
 ### SOLID Principles
 - **Single Responsibility**: Each class has one clear purpose
-- **Open/Closed**: Extensible through interfaces, closed for modification  
+- **Open/Closed**: Extensible through interfaces, closed for modification
 - **Liskov Substitution**: All implementations are interchangeable
 - **Interface Segregation**: Focused, minimal interfaces
 - **Dependency Inversion**: Depends on abstractions, not concrete implementations
@@ -133,8 +133,8 @@ FileProcessorChain
 DocxToPdfConverter(FileProcessor)
   # Converts DOCX/DOC to PDF using LibreOffice
   # Supports: .docx, .doc
-  
-PypandocConverter(FileProcessor)  
+
+PypandocConverter(FileProcessor)
   # Fallback converter using pypandoc
   # Requires pandoc installation
 ```
@@ -145,7 +145,7 @@ ArchiveExtractor(FileProcessor)
   # Uses patool library
   # Supports 30+ formats: ZIP, RAR, 7z, TAR, GZIP, BZIP2, XZ, ZSTANDARD, etc.
   # Reference: https://github.com/wummel/patool
-  
+
 SimpleZipExtractor(FileProcessor)
   # Built-in ZIP extraction fallback
   # No external dependencies
@@ -165,7 +165,7 @@ DocumentReader (ABC)
 PyMuPDFReader(DocumentReader)
   # Fast PDF reading with image support
   # Uses PyMuPDF (fitz) library
-  
+
 PDFPlumberReader(DocumentReader)
   # Advanced PDF extraction with table support
   # Uses pdfplumber library
@@ -178,13 +178,13 @@ PDFPlumberReader(DocumentReader)
 ```python
 LLMClassifier(Classifier)
   # Single gateway for multiple LLM providers
-  
+
   Supported Providers:
   ├── OpenAI (GPT-4, GPT-4-turbo, GPT-3.5-turbo)
   ├── Anthropic (Claude 3 Opus, Sonnet, Haiku)
   ├── Ollama (Local models: Llama, Mistral, Mixtral)
   └── Azure OpenAI
-  
+
   Methods:
   ├── classify(text, catalogs) -> ClassificationResult
   ├── find_catalog(catalog_id, text, catalogs) -> (Catalog, metadata)
@@ -207,7 +207,7 @@ CollectionHandler (ABC)
 S3CollectionHandler(CollectionHandler)
   # Upload to S3 collections
   # Path: collections/{catalog.id}/{filename}
-  
+
 APICollectionHandler(CollectionHandler)
   # Upload via REST API
   # Additional methods:
@@ -369,7 +369,7 @@ class NewStorageProvider(StorageProvider):
     def upload_file(self, file_obj, filename):
         # Implementation
         pass
-    
+
     # Implement other abstract methods...
 
 # Register in get_storage_provider()
@@ -385,11 +385,11 @@ from .base import DocumentReader
 class NewReader(DocumentReader):
     def can_read(self, file_path):
         return file_path.suffix == '.newformat'
-    
+
     def read_pages(self, file_path, max_pages):
         # Implementation
         pass
-    
+
     # Implement other abstract methods...
 ```
 
@@ -402,7 +402,7 @@ from .base import FileProcessor
 class CustomProcessor(FileProcessor):
     def can_process(self, file_context):
         return file_context.file_type == 'custom'
-    
+
     def process(self, file_context, output_dir):
         # Process and return List[FileContext]
         pass
@@ -526,4 +526,3 @@ print(f"Execution time: {result.execution_time_seconds:.2f}s")
 ## License
 
 Inherits license from parent S3 File Share project.
-

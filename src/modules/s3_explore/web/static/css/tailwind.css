@@ -163,11 +163,11 @@ body {
     .container {
         padding: 1rem;
     }
-    
+
     .file-list-item {
         @apply flex-col items-start;
     }
-    
+
     .file-list-item .actions {
         @apply mt-2 w-full flex justify-between;
     }
