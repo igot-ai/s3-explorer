@@ -1,0 +1,22 @@
+# Core dependencies
+boto3>=1.28.0
+s3fs>=2023.9.0
+pyyaml>=6.0
+
+# Document processing
+PyMuPDF>=1.23.0  # fitz - PDF reading
+pdfplumber>=0.10.0  # Alternative PDF reader
+patool>=1.12  # Archive extraction
+
+# LLM providers (optional - install as needed)
+openai>=1.0.0  # OpenAI API
+anthropic>=0.7.0  # Anthropic Claude API
+requests>=2.31.0  # For Ollama and API handlers
+httpx>=0.23.0  # For Datalog API handler
+
+# Storage providers (already in parent project)
+# google-cloud-storage
+# b2sdk
+
+# Utilities
+python-dateutil>=2.8.0
