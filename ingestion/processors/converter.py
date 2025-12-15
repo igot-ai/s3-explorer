@@ -1,6 +1,6 @@
 """Document converter implementations."""
 
-import logging
+from _logging import get_logger
 from pathlib import Path
 from typing import List
 import subprocess
@@ -8,7 +8,7 @@ import os
 from .base import FileProcessor
 from ..core.models import FileContext, FileStatus
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class DocxToPdfConverter(FileProcessor):

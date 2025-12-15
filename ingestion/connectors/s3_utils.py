@@ -3,11 +3,11 @@ import boto3
 import s3fs
 import io
 from botocore.exceptions import ClientError, NoCredentialsError
-import logging
+from _logging import get_logger
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 def validate_credentials(access_key: str, secret_key: str, bucket: str, region: str) -> tuple[bool, str]:
     """Validate AWS credentials and bucket access"""

@@ -1,7 +1,7 @@
 """Command-line interface for the ingestion pipeline."""
 
 import argparse
-import logging
+from _logging import get_logger
 import sys
 from pathlib import Path
 from typing import Optional
@@ -26,7 +26,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def create_pipeline(config: IngestionConfig, catalogs: CatalogRegistry) -> IngestionPipeline:
@@ -141,7 +141,7 @@ def main():
     
     # Set logging level
     if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
+        get_logger().setLevel(logging.DEBUG)
     
     try:
         # Load configuration

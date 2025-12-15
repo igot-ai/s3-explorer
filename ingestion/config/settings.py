@@ -1,17 +1,22 @@
 """Ingestion pipeline configuration."""
 
-import os
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional
 import json
 import yaml
-from pathlib import Path
+
+from ingestion.env import (
+    READER_TYPE,
+    TEMP_DIR,
+    API_BASE_URL,
+)
 
 
 @dataclass
 class IngestionConfig:
     """Configuration for the ingestion pipeline.
     
+    Uses environment variables from env.py as defaults.
     Can be loaded from JSON or YAML files.
     """
     
@@ -21,22 +26,9 @@ class IngestionConfig:
     
     # Processing settings
     pages_to_read: int = 3
-    temp_dir: Optional[str] = None
-    
-    # Classifier settings
-    classifier_type: str = "openai"  # openai, anthropic, ollama, azure
-    classifier_model: str = ""
-    classifier_api_key: Optional[str] = None
-    classifier_api_base_url: Optional[str] = None
-    classifier_api_version: Optional[str] = None
-    
-    # Handler settings
-    handler_type: str = "s3"  # s3, api
-    api_base_url: Optional[str] = None
-    api_key: Optional[str] = None
-    
-    # Reader settings
-    reader_type: str = "pymupdf"  # pymupdf, pdfplumber
+    temp_dir: Optional[str] = field(default_factory=lambda: TEMP_DIR)
+    reader_type: str = field(default_factory=lambda: READER_TYPE)
+    api_base_url: str = field(default_factory=lambda: API_BASE_URL)
     
     # Storage provider (for S3 source and handler)
     storage_provider: str = "aws"  # aws, gcs, etc.
@@ -69,45 +61,14 @@ class IngestionConfig:
         with open(file_path, 'r') as f:
             data = yaml.safe_load(f)
         return cls(**data)
-    
-    @classmethod
-    def from_env(cls) -> 'IngestionConfig':
-        """Load configuration from environment variables.
-        
-        Returns:
-            IngestionConfig instance
-        """
-        return cls(
-            source_path=os.getenv('INGESTION_SOURCE_PATH', ''),
-            recursive=os.getenv('INGESTION_RECURSIVE', 'true').lower() == 'true',
-            pages_to_read=int(os.getenv('INGESTION_PAGES_TO_READ', '3')),
-            temp_dir=os.getenv('INGESTION_TEMP_DIR'),
-            classifier_type=os.getenv('INGESTION_CLASSIFIER_TYPE', 'openai'),
-            classifier_model=os.getenv('INGESTION_CLASSIFIER_MODEL', ''),
-            classifier_api_key=os.getenv('INGESTION_CLASSIFIER_API_KEY'),
-            classifier_api_base_url=os.getenv('INGESTION_CLASSIFIER_API_BASE_URL'),
-            classifier_api_version=os.getenv('INGESTION_CLASSIFIER_API_VERSION'),
-            handler_type=os.getenv('INGESTION_HANDLER_TYPE', 's3'),
-            api_base_url=os.getenv('INGESTION_API_BASE_URL'),
-            api_key=os.getenv('INGESTION_API_KEY'),
-            reader_type=os.getenv('INGESTION_READER_TYPE', 'pymupdf'),
-            storage_provider=os.getenv('INGESTION_STORAGE_PROVIDER', 'aws'),
-        )
 
     def __post_init__(self):
         """Normalize string fields to avoid subtle whitespace issues."""
         fields_to_strip = [
             "source_path",
             "temp_dir",
-            "classifier_type",
-            "classifier_model",
-            "classifier_api_key",
-            "classifier_api_base_url",
-            "classifier_api_version",
-            "handler_type",
-            "api_base_url",
-            "api_key",
             "reader_type",
+            "api_base_url",
             "storage_provider",
         ]
         for name in fields_to_strip:
@@ -126,14 +87,8 @@ class IngestionConfig:
             'recursive': self.recursive,
             'pages_to_read': self.pages_to_read,
             'temp_dir': self.temp_dir,
-            'classifier_type': self.classifier_type,
-            'classifier_model': self.classifier_model,
-            'classifier_api_key': self.classifier_api_key,
-            'classifier_api_base_url': self.classifier_api_base_url,
-            'classifier_api_version': self.classifier_api_version,
-            'handler_type': self.handler_type,
-            'api_base_url': self.api_base_url,
             'reader_type': self.reader_type,
+            'api_base_url': self.api_base_url,
             'storage_provider': self.storage_provider,
             'storage_credentials': self.storage_credentials,
         }
@@ -152,14 +107,8 @@ class IngestionConfig:
             'recursive': self.recursive,
             'pages_to_read': self.pages_to_read,
             'temp_dir': self.temp_dir,
-            'classifier_type': self.classifier_type,
-            'classifier_model': self.classifier_model,
-            'classifier_api_key': self.classifier_api_key,
-            'classifier_api_base_url': self.classifier_api_base_url,
-            'classifier_api_version': self.classifier_api_version,
-            'handler_type': self.handler_type,
-            'api_base_url': self.api_base_url,
             'reader_type': self.reader_type,
+            'api_base_url': self.api_base_url,
             'storage_provider': self.storage_provider,
             'storage_credentials': self.storage_credentials,
         }

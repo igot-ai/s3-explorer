@@ -1,7 +1,7 @@
 """Unified LLM classifier supporting multiple providers."""
 
 import json
-import logging
+from _logging import get_logger
 import dspy
 from typing import List, Optional
 from .base import Classifier
@@ -17,7 +17,7 @@ from ingestion.env import (
 )
 from ingestion.utils.llm_helper import LLMHelper
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class FileClassification(dspy.Signature):

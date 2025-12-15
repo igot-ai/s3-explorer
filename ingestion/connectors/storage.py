@@ -10,9 +10,9 @@ from google.oauth2 import service_account
 import json
 import io
 import datetime
-import logging
+from _logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class StorageProvider(ABC):
     """Abstract base class for storage providers"""

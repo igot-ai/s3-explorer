@@ -1,9 +1,9 @@
 import os
 from dataclasses import dataclass
 import json
-import logging
+from _logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 @dataclass
 class S3Config:

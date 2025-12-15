@@ -4,26 +4,25 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import logging
+from _logging import get_logger
 import time
 from typing import Dict, Any, BinaryIO, Optional, List
 from uuid import UUID
 import json
+import concurrent.futures
 
 import httpx
 
-from .base import APICollectionHandler
-from ..core.models import FileContext, Catalog, FolderContext
+from ingestion.handlers.base import APICollectionHandler
+from ingestion.core.models import FileContext, Catalog, FolderContext
+from ingestion.env import API_BASE_URL
 
-logger = logging.getLogger(__name__)
-
-DATALOG_BASE_URL = "https://studio.igot.ai/v1/catalog"
-
+logger = get_logger(__name__)
 
 class DatalogService:
     """Service to interact with catalog projects, tables, and assets."""
 
-    def __init__(self, auth_token: str, base_url: str = DATALOG_BASE_URL):
+    def __init__(self, auth_token: str, base_url: str = API_BASE_URL):
         self.base_url = base_url
         self.auth_token = auth_token
         self.client = httpx.AsyncClient(base_url=self.base_url, timeout=60.0)
@@ -583,7 +582,7 @@ class DataCollectionAPIHandler(APICollectionHandler):
     def __init__(
         self,
         auth_token: str,
-        base_url: str = DATALOG_BASE_URL,
+        base_url: str = API_BASE_URL,
         workspace_id: str = "default",
         project_id: Optional[str] = None,
     ):
@@ -591,7 +590,7 @@ class DataCollectionAPIHandler(APICollectionHandler):
         
         Args:
             auth_token: Datalog authentication token
-            base_url: Base URL of the Datalog API (default: DATALOG_BASE_URL)
+            base_url: Base URL of the Datalog API (default: API_BASE_URL)
             workspace_id: Workspace ID for creating projects (default: "default")
             project_id: Optional existing project ID to use (creates new if not provided)
         """
@@ -601,43 +600,71 @@ class DataCollectionAPIHandler(APICollectionHandler):
         self.project_id = project_id
         self._service = DatalogService(auth_token=auth_token, base_url=base_url)
         self._authenticated = True  # Token-based auth is always "authenticated"
-        # Track catalog_id -> [asset_ids] for transformation polling
-        self._catalog_assets: Dict[str, List[str]] = {}
 
     def __del__(self):
         """Cleanup async client on destruction."""
         try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If loop is running, schedule cleanup
-                loop.create_task(self._service.close())
-            else:
-                loop.run_until_complete(self._service.close())
-        except Exception:
-            pass  # Ignore cleanup errors
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._service.close())
+        except RuntimeError:
+            asyncio.run(self._service.close())
 
-    def _run_async(self, coro):
-        """Run async coroutine synchronously."""
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If we're in an async context, create a new event loop
-                # This handles the case where we're called from an async context
-                new_loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(new_loop)
+
+
+    def _run_async_in_thread(self, coro_factory):
+        """Run async coroutine factory in a separate thread with fresh event loop.
+        
+        This avoids event loop conflicts when called from an async context.
+        
+        Args:
+            coro_factory: A callable that takes a DatalogService and returns a coroutine
+        """        
+        def run_in_new_loop():
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            try:
+                fresh_service = DatalogService(
+                    auth_token=self.auth_token,
+                    base_url=self.base_url
+                )
                 try:
+                    coro = coro_factory(fresh_service)
                     return new_loop.run_until_complete(coro)
                 finally:
-                    new_loop.close()
-            else:
-                return loop.run_until_complete(coro)
-        except RuntimeError:
-            # No event loop exists, create one
-            return asyncio.run(coro)
+                    new_loop.run_until_complete(fresh_service.close())
+            finally:
+                new_loop.close()
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(run_in_new_loop)
+            return future.result()
 
-    def reset_catalog_assets(self) -> None:
-        """Clear tracked catalog IDs that have uploaded assets."""
-        self._catalog_ids_with_assets.clear()
+    def _run_async(self, coro_factory):
+        """Run async coroutine synchronously.
+        
+        Args:
+            coro_factory: A callable that takes a DatalogService and returns a coroutine
+        
+        When called from an async context, runs in a separate thread with
+        a fresh event loop and HTTP client to avoid conflicts.
+        """
+        try:
+            asyncio.get_running_loop()
+            # A loop is running - use thread to avoid conflicts
+            return self._run_async_in_thread(coro_factory)
+        except RuntimeError:
+            # No running event loop - create fresh service to avoid stale client issues
+            async def run_with_fresh_service():
+                fresh_service = DatalogService(
+                    auth_token=self.auth_token,
+                    base_url=self.base_url
+                )
+                try:
+                    return await coro_factory(fresh_service)
+                finally:
+                    await fresh_service.close()
+            
+            return asyncio.run(run_with_fresh_service())
 
     def authenticate(self) -> None:
         """Authenticate with Datalog API.
@@ -665,7 +692,7 @@ class DataCollectionAPIHandler(APICollectionHandler):
             Table details dictionary or None if not found
         """
         if collection_id:
-            return self._run_async(self._service.exists_table(collection_id))
+            return self._run_async(lambda svc: svc.exists_table(collection_id))
         return False
             
     def create_collection(self, catalog: Catalog) -> Dict:
@@ -731,43 +758,40 @@ class DataCollectionAPIHandler(APICollectionHandler):
             Asset ID from Datalog
         """
         try:
-            # Ensure collection (table) exists
             is_collection_exists = self.exists_collection(catalog.id)
 
             if not is_collection_exists:
                 raise ValueError(f"Collection {catalog.id} does not exist")
             
-            # Read file content
             file_bytes = file_stream.read()
-            
-            # Determine content type
             content_type = self._guess_content_type(file_context.source_path)
+            table_id = catalog.id
+            filename = file_context.source_path.split('/')[-1]
+            source_id = file_context.source_path
+            column_static_data = metadata.get("folder_metadata", {})
+            project_id = self.project_id
             
-            # Upload asset
             result = self._run_async(
-                self._service.upload_asset(
-                    table_id=catalog.id,
+                lambda svc: svc.upload_asset(
+                    table_id=table_id,
                     file_bytes=file_bytes,
-                    filename=file_context.source_path.split('/')[-1],
+                    filename=filename,
                     content_type=content_type,
                     plain_text=None,
-                    source_id=file_context.source_path,
-                    column_static_data=metadata.get("folder_metadata", {}),
+                    source_id=source_id,
+                    column_static_data=column_static_data,
                 )
             )
             
             uploaded_files = result.get("uploaded_files") or []
             if isinstance(uploaded_files, list):
-                filename = file_context.source_path.split("/")[-1]
-                
                 def _pick_asset(files: list[Dict[str, Any]]) -> Optional[str]:
-                    # Prefer the file that matches the uploaded filename
                     for item in files:
                         if not isinstance(item, dict):
                             continue
                         if item.get("asset_id") and item.get("filename") == filename:
                             return item.get("asset_id")
-                    # Fall back to the first entry that exposes an asset identifier
+
                     for item in files:
                         if not isinstance(item, dict):
                             continue
@@ -778,16 +802,16 @@ class DataCollectionAPIHandler(APICollectionHandler):
                 asset_id = _pick_asset(uploaded_files)
 
                 self._run_async(
-                    self._service.trigger_transformation(
-                        project_id=self.project_id,
-                        table_id=catalog.id,
+                    lambda svc: svc.trigger_transformation(
+                        project_id=project_id,
+                        table_id=table_id,
                         asset_ids=[asset_id],
                     )
                 )
 
                 extracted_metadata = self._run_async(
-                    self._service.poll_data_assets(
-                        table_id=catalog.id,
+                    lambda svc: svc.poll_data_assets(
+                        table_id=table_id,
                         asset_id=asset_id,
                         interval_seconds=10.0,
                         max_attempts=60  # Wait up to 10 minutes per asset
@@ -866,68 +890,3 @@ class DataCollectionAPIHandler(APICollectionHandler):
         import mimetypes
         content_type, _ = mimetypes.guess_type(file_path)
         return content_type or "application/octet-stream"
-
-    def aggregate_metadata(self, catalogs: List[Catalog]) -> bool:
-        """Trigger transformation for catalogs that have uploaded assets.
-        
-        Uses internal tracking of uploaded catalogs (`self._catalog_assets`)
-        and processes them sequentially. Each catalog's transformation is 
-        polled until complete before moving to the next one.
-        Catalogs with fetch_all_metadata=True are processed last.
-        
-        Args:
-            catalogs: List of all available catalogs
-            
-        Returns:
-            True if all transformations completed successfully, False otherwise
-        """
-        if not catalogs:
-            logger.warning("No catalogs provided for transformation")
-            return False
-        
-        if not self.project_id:
-            logger.error("No project_id configured for triggering transformation")
-            return False
-        
-        if not self._catalog_assets:
-            logger.info("No catalogs with uploaded assets to trigger transformation")
-            return True
-        
-        # Filter to only catalogs that have uploaded assets
-        catalogs_to_process = [
-            c for c in catalogs if c.id in self._catalog_assets
-        ]
-        if not catalogs_to_process:
-            logger.info("No matching catalogs with uploaded assets found")
-            return True
-        
-        # Sort catalogs: fetch_all_metadata=False first, fetch_all_metadata=True last
-        sorted_catalogs = sorted(
-            catalogs_to_process, key=lambda c: c.fetch_all_metadata
-        )
-        
-        logger.info(
-            f"Triggering transformation for {len(sorted_catalogs)} catalogs "
-            f"(order: {[c.id for c in sorted_catalogs]})"
-        )
-        
-        success = True
-        for catalog in sorted_catalogs:
-            if not catalog.id:
-                logger.warning("Catalog missing id, skipping transformation")
-                continue
-            
-            # Verify collection exists before triggering transformation
-            if not self.exists_collection(catalog.id):
-                logger.warning(
-                    f"Collection {catalog.id} does not exist, skipping transformation"
-                )
-                continue
-            
-            # Trigger transformation and wait for completion before next catalog
-            if not self._trigger_transformation(catalog):
-                success = False
-        
-        # Clear processed catalog assets to avoid duplicate triggering
-        self._catalog_assets.clear()
-        return success

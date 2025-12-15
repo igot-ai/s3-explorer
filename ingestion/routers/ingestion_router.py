@@ -1,14 +1,12 @@
 """API router for ingestion pipeline endpoints."""
 
-import logging
+from _logging import get_logger
 from flask import Blueprint, request, jsonify
-from pydantic import ValidationError
+from marshmallow import ValidationError
 
-from ingestion.schemas import (
-    IngestionRequestSchema,
-    IngestionResponseSchema,
-    FolderResultSchema,
-    FileResultSchema,
+from ingestion.schemas.ingestion_schemas import (
+    ingestion_request_schema,
+    ingestion_response_schema,
 )
 from ingestion.config.settings import IngestionConfig
 from ingestion.core.models import IngestionJobConfig, Catalog, FileContext, FolderContext
@@ -20,13 +18,15 @@ from ingestion.processors.base import FileProcessorChain
 from ingestion.processors.converter import DocxToPdfConverter
 from ingestion.processors.extractor import ArchiveExtractor, SimpleZipExtractor
 from ingestion.readers.markitdown_reader import MarkitdownReader
+from ingestion.readers.pdfplumber_reader import PDFPlumberReader
+from ingestion.readers.pymupdf_reader import PyMuPDFReader
 from ingestion.classifiers.llm_classifier import LLMClassifier
 from ingestion.handlers.api_handler import DataCollectionAPIHandler
 from ingestion.connectors import get_storage_provider
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
-ingestion_bp = Blueprint("ingestion", __name__, url_prefix="/api/ingestion")
+ingestion_bp = Blueprint("ingestion", __name__, url_prefix="/api/v1/ingestion")
 
 
 def create_pipeline_from_request(config: IngestionConfig, workspace_id: str, project_id: str, auth_token: str) -> IngestionPipeline:
@@ -68,21 +68,29 @@ def create_pipeline_from_request(config: IngestionConfig, workspace_id: str, pro
     
     processor_chain = FileProcessorChain(processors)
     
-    document_reader = MarkitdownReader()
-    
+    # Select document reader based on config (uses env default)
+    reader_type = config.reader_type
+    if reader_type == "markitdown":
+        document_reader = MarkitdownReader()
+    elif reader_type == "pdfplumber":
+        document_reader = PDFPlumberReader()
+    elif reader_type == "pymupdf":
+        document_reader = PyMuPDFReader()
+    else:
+        document_reader = MarkitdownReader()
+    # Classifier uses LLM settings from env.py
     classifier = LLMClassifier()
-    logger.info(f"Using {config.classifier_type} classifier with model: {classifier.model}")
     
     # Create collection handler
     if not config.api_base_url:
         raise ValueError("API base URL required for API handler")
 
     collection_handler = DataCollectionAPIHandler(
+        base_url=config.api_base_url,
         workspace_id=workspace_id,
         project_id=project_id,
         auth_token=auth_token
     )
-    logger.info(f"Using API collection handler: {config.api_base_url}")
     
     # Create callbacks for progress tracking
     def on_file_processed(file_ctx: FileContext):
@@ -111,34 +119,38 @@ def create_pipeline_from_request(config: IngestionConfig, workspace_id: str, pro
 @ingestion_bp.route("/run", methods=["POST"])
 def run_ingestion():
     """Run the ingestion pipeline with configuration from request body.
+
     
     Request Body:
         {
             "config": {
-                "source_path": "s3://bucket/path",
-                "recursive": true,
-                "pages_to_read": 3,
-                "classifier_type": "openai",
-                "reader_type": "pymupdf",
-                "storage_provider": "aws",
-                "storage_credentials": {
-                    "access_key": "...",
-                    "secret_key": "...",
-                    "bucket": "...",
+                "source_path": "raw-documents/",  # Required
+                "storage_provider": "aws",  # Optional, default: "aws"
+                "storage_credentials": {  # Required for S3 access
+                    "access_key": "YOUR_AWS_ACCESS_KEY",
+                    "secret_key": "YOUR_AWS_SECRET_KEY",
+                    "bucket": "your-bucket-name",
                     "region": "us-east-1"
                 },
-                "api_base_url": "https://api.example.com",
-                "workspace_id": "...",
-                "project_id": "...",
-                "auth_token": "..."
+                "workspace_id": "YOUR_WORKSPACE_ID",  # Required
+                "project_id": "YOUR_PROJECT_ID",  # Required
+                "auth_token": "YOUR_AUTH_TOKEN",  # Required
+                "recursive": true,  # Optional, default: true
+                "pages_to_read": 3,  # Optional, default: 3
+                "reader_type": "pymupdf",  # Optional, uses env READER_TYPE
+                "temp_dir": "./tmp/ingestion",  # Optional, uses env TEMP_DIR
+                "api_base_url": "http://..."  # Optional, uses env API_BASE_URL
             },
             "catalogs": [
                 {
-                    "id": "catalog1",
-                    "information": "Classification instruction",
-                    "content": "Description",
+                    "id": "legal-contracts",
+                    "information": "Documents containing legal contracts...",
+                    "content": "Legal domain documents",
                     "fetch_all_metadata": false,
-                    "metadata_scan": {}
+                    "metadata_scan": {
+                        "legal_entity": "string - name of the legal entity",
+                        "contract_type": "string - type of contract"
+                    }
                 }
             ]
         }
@@ -156,61 +168,62 @@ def run_ingestion():
                 "errors": ["No JSON data provided"]
             }), 400
         
-        # Validate with Pydantic
         try:
-            req = IngestionRequestSchema(**data)
+            req = ingestion_request_schema.load(data)
         except ValidationError as e:
-            errors = [f"{err['loc']}: {err['msg']}" for err in e.errors()]
+            errors = [f"{field}: {', '.join(msgs)}" for field, msgs in e.messages.items()]
             return jsonify({
                 "success": False,
                 "message": "Validation error",
                 "errors": errors
             }), 400
         
-        # Convert Pydantic models to dataclass/internal models
+        # Convert validated data to internal models
+        config_data = req["config"]
+        storage_creds = config_data.get("storage_credentials", {})
+        # Filter out None values from storage credentials
+        storage_creds = {k: v for k, v in storage_creds.items() if v is not None}
+        
         config = IngestionConfig(
-            source_path=req.config.source_path,
-            recursive=req.config.recursive,
-            pages_to_read=req.config.pages_to_read,
-            temp_dir=req.config.temp_dir,
-            classifier_type=req.config.classifier_type,
-            classifier_model=req.config.classifier_model or "",
-            classifier_api_key=req.config.classifier_api_key,
-            classifier_api_base_url=req.config.classifier_api_base_url,
-            classifier_api_version=req.config.classifier_api_version,
-            handler_type=req.config.handler_type,
-            api_base_url=req.config.api_base_url,
-            api_key=req.config.api_key,
-            reader_type=req.config.reader_type,
-            storage_provider=req.config.storage_provider,
-            storage_credentials=req.config.storage_credentials.model_dump(exclude_none=True)
+            source_path=config_data["source_path"],
+            recursive=config_data.get("recursive", True),
+            pages_to_read=config_data.get("pages_to_read", 3),
+            storage_provider=config_data.get("storage_provider", "aws"),
+            storage_credentials=storage_creds
         )
         
-        # Convert catalog schemas to Catalog dataclass instances
+        # Override with request values if provided
+        if config_data.get("temp_dir"):
+            config.temp_dir = config_data["temp_dir"]
+        if config_data.get("reader_type"):
+            config.reader_type = config_data["reader_type"]
+        if config_data.get("api_base_url"):
+            config.api_base_url = config_data["api_base_url"]
+        
+        # Convert catalog data to Catalog dataclass instances
         catalogs = [
             Catalog(
-                id=cat.id,
-                information=cat.information,
-                content=cat.content,
-                fetch_all_metadata=cat.fetch_all_metadata,
-                metadata_scan=cat.metadata_scan
+                id=cat["id"],
+                information=cat["information"],
+                content=cat["content"],
+                fetch_all_metadata=cat.get("fetch_all_metadata", False),
+                metadata_scan=cat.get("metadata_scan", {})
             )
-            for cat in req.catalogs
+            for cat in req["catalogs"]
         ]
         
         # Create job configuration
         job_config = IngestionJobConfig(
             source_path=config.source_path,
             catalogs=catalogs,
-            pages_to_read=config.pages_to_read,
             recursive=config.recursive,
             temp_dir=config.temp_dir
         )
         
         # Get API handler settings
-        workspace_id = req.config.workspace_id
-        project_id = req.config.project_id
-        auth_token = req.config.auth_token
+        workspace_id = config_data.get("workspace_id")
+        project_id = config_data.get("project_id")
+        auth_token = config_data.get("auth_token")
         
         if not workspace_id or not project_id or not auth_token:
             return jsonify({
@@ -231,33 +244,33 @@ def run_ingestion():
         folders = []
         for folder_ctx in result.folder_contexts:
             files = [
-                FileResultSchema(
-                    source_path=f.source_path,
-                    status=f.status.value,
-                    classified_catalog_id=f.classified_catalog_id,
-                    error_message=f.error_message,
-                    metadata=f.metadata
-                )
+                {
+                    "source_path": f.source_path,
+                    "status": f.status.value,
+                    "classified_catalog_id": f.classified_catalog_id,
+                    "error_message": f.error_message,
+                    "metadata": f.metadata
+                }
                 for f in folder_ctx.files
             ]
-            folders.append(FolderResultSchema(
-                folder_path=folder_ctx.folder_path,
-                successful_count=len(folder_ctx.get_successful_files()),
-                failed_count=len(folder_ctx.get_failed_files()),
-                files=files
-            ))
+            folders.append({
+                "folder_path": folder_ctx.folder_path,
+                "successful_count": len(folder_ctx.get_successful_files()),
+                "failed_count": len(folder_ctx.get_failed_files()),
+                "files": files
+            })
         
-        response = IngestionResponseSchema(
-            success=result.failed == 0,
-            message="Pipeline completed successfully" if result.failed == 0 else "Pipeline completed with some failures",
-            total_folders=result.total_folders,
-            total_files=result.total_files,
-            successful=result.successful,
-            failed=result.failed,
-            success_rate=f"{result.get_success_rate():.2f}%",
-            execution_time=f"{result.execution_time_seconds:.2f}s",
-            folders=folders
-        )
+        response_data = {
+            "success": result.failed == 0,
+            "message": "Pipeline completed successfully" if result.failed == 0 else "Pipeline completed with some failures",
+            "total_folders": result.total_folders,
+            "total_files": result.total_files,
+            "successful": result.successful,
+            "failed": result.failed,
+            "success_rate": f"{result.get_success_rate():.2f}%",
+            "execution_time": f"{result.execution_time_seconds:.2f}s",
+            "folders": folders
+        }
         
         logger.info("=" * 80)
         logger.info("Pipeline Completed")
@@ -269,7 +282,7 @@ def run_ingestion():
         logger.info(f"Success rate: {result.get_success_rate():.2f}%")
         logger.info(f"Execution time: {result.execution_time_seconds:.2f}s")
         
-        return jsonify(response.model_dump()), 200
+        return jsonify(ingestion_response_schema.dump(response_data)), 200
         
     except ValueError as e:
         logger.error(f"Configuration error: {str(e)}")

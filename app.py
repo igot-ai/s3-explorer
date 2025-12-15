@@ -1,22 +1,15 @@
 import os
-import logging
-from flask import Flask, render_template, request, jsonify, send_file, Response, abort, redirect, url_for, session, g, make_response
+from _logging import get_logger
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, session, make_response
 from werkzeug.utils import secure_filename
 from storage_providers import get_storage_provider
 import mimetypes
-import boto3
-from botocore.exceptions import ClientError
 from functools import wraps
 import secrets
 import json
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 import re
 from ingestion.routers import ingestion_bp
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024 * 1024  # 1 TB
@@ -59,7 +52,7 @@ def get_csrf_token():
     return response
 
 # Set up logging
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 CHUNK_SIZE = 100 * 1024 * 1024  # 100 MB chunks
 

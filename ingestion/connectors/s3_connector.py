@@ -1,6 +1,6 @@
 """S3 source connector implementation."""
 
-import logging
+from _logging import get_logger
 from typing import Iterator, BinaryIO, List
 from pathlib import Path
 import io
@@ -8,7 +8,7 @@ from .base import SourceConnector
 from ..core.models import FileContext, FileStatus
 from .storage import StorageProvider
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class S3SourceConnector(SourceConnector):

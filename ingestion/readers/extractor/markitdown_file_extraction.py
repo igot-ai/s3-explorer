@@ -1,5 +1,5 @@
 import io
-import logging
+from _logging import get_logger
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List
 
@@ -26,7 +26,7 @@ from ingestion.utils.constant import (
 from ingestion.utils.file_helper import FileHelper
 from ingestion.utils.llm_helper import LLMHelper
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 FILE_EXTRACTION = """
 ## Instruction

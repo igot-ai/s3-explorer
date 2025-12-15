@@ -1,11 +1,11 @@
 """PyMuPDF (fitz) document reader implementation."""
 
-import logging
+from _logging import get_logger
 from pathlib import Path
 from typing import Optional
 from .base import DocumentReader
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class PyMuPDFReader(DocumentReader):

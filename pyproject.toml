@@ -34,6 +34,8 @@ pymupdf = "^1.26.6"
 pdfplumber = "^0.11.8"
 dspy = {git = "https://github.com/igot-ai/dspy.git", branch = "main", extras = ["mcp"]}
 markitdown = "^0.1.4"
+marshmallow = "^4.1.1"
+loguru = "^0.7.3"
 
 [build-system]
 requires = ["poetry-core"]

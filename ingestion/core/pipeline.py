@@ -1,6 +1,6 @@
 """Main ingestion pipeline orchestrator."""
 
-import logging
+from _logging import get_logger
 import time
 import tempfile
 from pathlib import Path
@@ -18,7 +18,7 @@ from ..readers.base import DocumentReader
 from ..classifiers.base import Classifier
 from ..handlers.base import CollectionHandler
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class IngestionPipeline:
@@ -100,7 +100,7 @@ class IngestionPipeline:
                 
                 for file_ctx in all_files:
                     try:
-                        processed_files = self._phase1_extract_and_classify(file_ctx, config, temp_dir)
+                        processed_files = self._read_and_classify(file_ctx, config, temp_dir)
                         all_processed_files.extend(processed_files)
                     except Exception as e:
                         logger.error(f"Error in phase 1 for {file_ctx.source_path}: {str(e)}")
@@ -131,9 +131,8 @@ class IngestionPipeline:
                         # Before uploading fetch_all_metadata files, aggregate metadata from uploaded files
                         if pf.classified_catalog_id in fetch_all_catalog_ids:
                             self._aggregate_folder_metadata(folder_ctx, config.catalogs)
-                            logger.debug(f"Aggregated metadata before uploading {pf.source_path}")
                         
-                        self._phase2_upload(pf, config, folder_ctx)
+                        self._extract_data(pf, config, folder_ctx)
                     except Exception as e:
                         logger.error(f"Error in phase 2 for {pf.source_path}: {str(e)}")
                         pf.status = FileStatus.FAILED
@@ -151,9 +150,6 @@ class IngestionPipeline:
                 # Step 3: Aggregate folder metadata before handler aggregation
                 self._aggregate_folder_metadata(folder_ctx, config.catalogs)
 
-                # Step 4: Trigger transformations and final aggregation in handler
-                self.handler.aggregate_metadata(config.catalogs)
-                
                 folder_contexts.append(folder_ctx)
                 
             finally:
@@ -169,7 +165,7 @@ class IngestionPipeline:
         
         return result
 
-    def _phase1_extract_and_classify(
+    def _read_and_classify(
         self,
         file_ctx: FileContext,
         config: IngestionJobConfig,
@@ -229,7 +225,7 @@ class IngestionPipeline:
         
         return processed_files
     
-    def _phase2_upload(
+    def _extract_data(
         self,
         pf: FileContext,
         config: IngestionJobConfig,

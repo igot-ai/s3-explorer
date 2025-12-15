@@ -4,9 +4,9 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any, Union
 from pydantic import BaseModel, field_validator
 from enum import Enum
-import logging
+from _logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class FileStatus(Enum):
