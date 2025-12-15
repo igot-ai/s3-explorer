@@ -12,6 +12,7 @@ for _p in (str(_SRC_DIR), str(_MODULES_DIR)):
 
 from flask import Flask, jsonify, make_response, redirect, request
 from flask_wtf.csrf import CSRFProtect, generate_csrf
+from flask_cors import CORS
 
 from src.modules.ingestion.routers import ingestion_bp
 from src.modules.s3_explore.web.routes import s3_explore_bp
@@ -35,6 +36,15 @@ app.config["WTF_CSRF_METHODS"] = ["POST", "PUT", "PATCH", "DELETE"]
 app.config["WTF_CSRF_CHECK_DEFAULT"] = False  # manual verification in /configure
 
 logger = get_logger(__name__)
+
+# Enable CORS for frontend
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 csrf = CSRFProtect()
 csrf.init_app(app)
