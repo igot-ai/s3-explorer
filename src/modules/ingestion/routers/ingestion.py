@@ -1,5 +1,3 @@
-"""API router for ingestion pipeline endpoints."""
-
 from flask import Blueprint, jsonify, request
 from ingestion.config.settings import IngestionConfig
 from ingestion.core.classifiers.llm_classifier import LLMClassifier
@@ -21,6 +19,7 @@ from ingestion.core.processors.extractor import ArchiveExtractor, SimpleZipExtra
 from ingestion.core.readers.markitdown_reader import MarkitdownReader
 from ingestion.core.readers.pdfplumber_reader import PDFPlumberReader
 from ingestion.core.readers.pymupdf_reader import PyMuPDFReader
+from ingestion.env import AUTH_TOKEN
 from ingestion.schemas.ingestion import (
     ingestion_request_schema,
     ingestion_response_schema,
@@ -32,6 +31,68 @@ from shared._logging import get_logger
 logger = get_logger(__name__)
 
 ingestion_bp = Blueprint("ingestion", __name__, url_prefix="/api/v1/ingestion")
+
+
+def _normalize_token(value: str | None) -> str | None:
+    """Normalize token strings so we can accept both 'Bearer <token>' and '<token>'."""
+    if not value:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    parts = value.split()
+    if len(parts) == 2 and parts[0].lower() == "bearer":
+        token = parts[1].strip()
+        return token or None
+    return value
+
+
+@ingestion_bp.before_request
+def _require_ingestion_auth():
+    """Blueprint-scoped auth 'middleware' for ingestion endpoints.
+
+    Compares incoming token against env AUTH_TOKEN.
+    Accepts either:
+    - AUTH_TOKEN: Bearer <token>   (or raw token)
+    - Authorization: Bearer <token> (or raw token)
+    """
+    # Allow unauthenticated health checks + CORS preflight.
+    if request.method == "OPTIONS" or request.path.endswith("/health"):
+        return None
+
+    provided = _normalize_token(request.headers.get("Authorization"))
+
+    logger.info(f"Provided token: {provided}")
+    logger.info(f"Expected token: {AUTH_TOKEN}")
+
+    if not AUTH_TOKEN:
+        # Fail closed if the server isn't configured with a token.
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "Server auth not configured",
+                    "errors": ["AUTH_TOKEN is not set on server"],
+                }
+            ),
+            500,
+        )
+
+    if provided != AUTH_TOKEN:
+        response = jsonify(
+            {
+                "success": False,
+                "message": "Unauthorized",
+                "errors": [
+                    "Invalid or missing auth token. Use AUTH_TOKEN or Authorization header."
+                ],
+            }
+        )
+        response.status_code = 401
+        response.headers["WWW-Authenticate"] = 'Bearer realm="ingestion"'
+        return response
+
+    return None
 
 
 def create_pipeline_from_request(

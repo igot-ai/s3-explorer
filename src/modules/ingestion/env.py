@@ -18,7 +18,7 @@ def _load_optional_env(var_name: str, default_value: str) -> str:
 
 
 # Load the .env file
-DOT_ENV_FILE_PATH = Path(__file__).parent.parent / ".env"
+DOT_ENV_FILE_PATH = Path(__file__).parent.parent.parent.parent / ".env"
 load_dotenv(DOT_ENV_FILE_PATH, override=True)
 
 # LLM
@@ -34,3 +34,4 @@ LLM_TEMPERATURE = float(_load_optional_env("LLM_TEMPERATURE", "0.3"))
 READER_TYPE = _load_optional_env("READER_TYPE", "markitdown")
 TEMP_DIR = _load_optional_env("TEMP_DIR", "./tmp/ingestion")
 API_BASE_URL = _load_optional_env("API_BASE_URL", "http://localhost:8000/v1/catalog")
+AUTH_TOKEN = _load_env("AUTH_TOKEN")
