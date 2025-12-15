@@ -1,1 +1,2 @@
-poetry run pre-commit run --all-files
+cd frontend && npm run lint:staged
+cd s3-explorer && poetry run pre-commit run --all-files
