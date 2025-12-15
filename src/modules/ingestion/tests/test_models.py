@@ -210,24 +210,32 @@ class TestClassificationResult:
     def test_classification_result_creation(self):
         """Test creating a classification result."""
         result = ClassificationResult(
-            catalog_id="test-catalog",
-            confidence=0.95,
-            reasoning="High confidence match",
-            metadata={"field1": "value1"}
+            category_id="test-catalog",
+            confidence=4,
+            reason="High confidence match"
         )
-        assert result.catalog_id == "test-catalog"
-        assert result.confidence == 0.95
-        assert result.reasoning == "High confidence match"
-        assert result.metadata["field1"] == "value1"
+        assert result.category_id == "test-catalog"
+        assert result.confidence == 4
+        assert result.reason == "High confidence match"
 
-    def test_classification_result_validation_confidence(self):
-        """Test that invalid confidence raises ValueError."""
-        with pytest.raises(ValueError, match="Confidence must be between 0.0 and 1.0"):
-            ClassificationResult(
-                catalog_id="test",
-                confidence=1.5,
-                reasoning="Test"
-            )
+    @pytest.mark.parametrize(
+        "raw,expected",
+        [
+            ("3", 3),
+            (3, 3),
+            (3.2, 3),
+            (0.8, 4),   # 0-1 gets scaled to 0-5 via int(v * 5)
+            ("0.95", 4),
+            (-10, 0),   # clamped
+            (10, 5),    # clamped
+            (None, 0),
+            ("not-a-number", 0),
+        ],
+    )
+    def test_classification_result_confidence_coercion(self, raw, expected):
+        """Test confidence coercion from LLM-style outputs."""
+        result = ClassificationResult(category_id="c1", confidence=raw, reason="x")
+        assert result.confidence == expected
 
 
 class TestPipelineResult:

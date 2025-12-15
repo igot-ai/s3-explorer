@@ -151,6 +151,12 @@ class IngestionPipeline:
                 self._aggregate_folder_metadata(folder_ctx, config.catalogs)
 
                 folder_contexts.append(folder_ctx)
+
+                if self.on_folder_completed:
+                    try:
+                        self.on_folder_completed(folder_ctx)
+                    except Exception as e:
+                        logger.error(f"Error in folder callback: {str(e)}")
                 
             finally:
                 # Cleanup temp directory after all phases complete

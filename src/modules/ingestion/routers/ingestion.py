@@ -3,7 +3,7 @@
 from flask import Blueprint, request, jsonify
 from marshmallow import ValidationError
 
-from ingestion.schemas.ingestion_schemas import (
+from ingestion.schemas.ingestion import (
     ingestion_request_schema,
     ingestion_response_schema,
 )

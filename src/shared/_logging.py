@@ -84,7 +84,7 @@ def setup_logging() -> None:
     if ENV == "development":
         # Console handler with colors and detailed format
         logger.add(
-            sys.stdout,
+            sys.__stderr__,
             level=LOG_LEVEL,
             format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
             "<level>{level: <8}</level> | "
@@ -93,6 +93,7 @@ def setup_logging() -> None:
             colorize=True,
             backtrace=True,
             diagnose=True,
+            catch=True,
         )
 
         # File handler for errors
@@ -105,16 +106,18 @@ def setup_logging() -> None:
             compression="zip",
             backtrace=True,
             diagnose=True,
+            catch=True,
         )
 
     # Production configuration
     else:
         # Console handler with JSON format for structured logging
         logger.add(
-            sys.stdout,
+            sys.__stderr__,
             level=LOG_LEVEL,
             format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}",
             colorize=False,
+            catch=True,
         )
 
         # Application logs
@@ -125,6 +128,7 @@ def setup_logging() -> None:
             rotation="50 MB",
             retention="30 days",
             compression="zip",
+            catch=True,
         )
 
         # Error logs
@@ -137,6 +141,7 @@ def setup_logging() -> None:
             compression="zip",
             backtrace=True,
             diagnose=False,  # Disable in production for security
+            catch=True,
         )
 
     # Intercept standard library logging
@@ -150,7 +155,6 @@ def setup_logging() -> None:
         "fastapi",
         "sqlalchemy",
         "alembic",
-        "chromadb",
         "sentence_transformers",
         "transformers",
         "torch",

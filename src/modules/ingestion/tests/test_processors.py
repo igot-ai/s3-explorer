@@ -4,9 +4,9 @@ import pytest
 from pathlib import Path
 import tempfile
 import zipfile
-from ingestion.processors.base import FileProcessor, FileProcessorChain
-from ingestion.processors.converter import DocxToPdfConverter
-from ingestion.processors.extractor import ArchiveExtractor, SimpleZipExtractor
+from ingestion.core.processors.base import FileProcessor, FileProcessorChain
+from ingestion.core.processors.converter import DocxToPdfConverter
+from ingestion.core.processors.extractor import ArchiveExtractor, SimpleZipExtractor
 from ingestion.core.models import FileContext, FileStatus
 
 

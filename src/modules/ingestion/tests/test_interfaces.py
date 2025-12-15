@@ -81,12 +81,16 @@ class MockDocumentReader(DocumentReader):
 class MockClassifier(Classifier):
     """Mock implementation of Classifier for testing."""
 
-    def classify(self, text: str, catalogs: List[Catalog]) -> ClassificationResult:
+    def classify(
+        self,
+        file_content: str,
+        file_name: str,
+        catalogs: List[Catalog],
+    ) -> ClassificationResult:
         return ClassificationResult(
-            catalog_id=catalogs[0].id if catalogs else "unknown",
-            confidence=0.95,
-            reasoning="Mock classification",
-            metadata={"field1": "value1"}
+            category_id=catalogs[0].id if catalogs else "unknown",
+            confidence=4,
+            reason="Mock classification",
         )
 
 class MockCollectionHandler(CollectionHandler):
@@ -112,7 +116,7 @@ class MockCollectionHandler(CollectionHandler):
         return f"s3://bucket/{catalog.id}/{file_context.source_path}"
 
     def build_destination_path(self, file_context: FileContext, catalog: Catalog) -> str:
-        return f"{catalog.target_path}{file_context.source_path}"
+        return f"collections/{catalog.id}/{file_context.source_path}"
 
 
 class MockAPICollectionHandler(APICollectionHandler):
@@ -296,39 +300,11 @@ class TestClassifier:
     def test_classify(self):
         classifier = MockClassifier()
         catalog = Catalog(id="test", information="Test", content="Test catalog")
-        result = classifier.classify("document text", [catalog])
+        result = classifier.classify("document text", "file.pdf", [catalog])
         
         assert isinstance(result, ClassificationResult)
-        assert result.catalog_id == "test"
-        assert 0.0 <= result.confidence <= 1.0
-
-    def test_find_catalog(self):
-        classifier = MockClassifier()
-        catalog1 = Catalog(id="cat1", information="Test1", content="Test1")
-        catalog2 = Catalog(id="cat2", information="Test2", content="Test2")
-        
-        found_catalog, metadata = classifier.find_catalog("cat2", "text", [catalog1, catalog2])
-        
-        assert found_catalog is not None
-        assert found_catalog.id == "cat2"
-        assert isinstance(metadata, dict)
-
-    def test_find_catalog_not_found(self):
-        classifier = MockClassifier()
-        catalog = Catalog(id="cat1", information="Test1", content="Test1")
-        
-        found_catalog, metadata = classifier.find_catalog("cat99", "text", [catalog])
-        
-        assert found_catalog is None
-        assert metadata == {}
-
-    def test_build_classification_prompt(self):
-        classifier = MockClassifier()
-        catalog = Catalog(id="test", information="Test docs", content="Test")
-        prompt = classifier.build_classification_prompt("doc text", [catalog])
-        
-        assert "test" in prompt.lower()
-        assert "doc text" in prompt
+        assert result.category_id == "test"
+        assert 0 <= result.confidence <= 5
 
 class TestCollectionHandler:
     """Test CollectionHandler interface."""
@@ -364,7 +340,6 @@ class TestCollectionHandler:
             information="Test",
             content="Test"
         )
-        catalog.target_path = "collections/test/"
         
         path = handler.build_destination_path(file_ctx, catalog)
         assert "collections/test/" in path
