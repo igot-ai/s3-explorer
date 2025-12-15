@@ -135,7 +135,6 @@ def main():
         # Load configuration
         if args.config:
             config_path = Path(args.config)
-            logger.info(f"Config path: {config_path}")
             if config_path.suffix in [".yaml", ".yml"]:
                 config = IngestionConfig.from_yaml(str(config_path))
             else:

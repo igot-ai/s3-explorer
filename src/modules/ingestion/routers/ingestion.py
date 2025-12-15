@@ -62,9 +62,6 @@ def _require_ingestion_auth():
 
     provided = _normalize_token(request.headers.get("Authorization"))
 
-    logger.info(f"Provided token: {provided}")
-    logger.info(f"Expected token: {AUTH_TOKEN}")
-
     if not AUTH_TOKEN:
         # Fail closed if the server isn't configured with a token.
         return (

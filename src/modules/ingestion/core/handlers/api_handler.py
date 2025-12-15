@@ -253,13 +253,26 @@ class DataCollectionAPIHandler(APICollectionHandler):
                     )
                 )
 
-                extracted_metadata = self._run_async(
-                    lambda svc: svc.poll_data_assets(
+                is_scanned = self._run_async(
+                    lambda svc: svc.poll_data_status(
                         table_id=table_id,
                         asset_id=asset_id,
                         interval_seconds=10.0,
                         max_attempts=60,  # Wait up to 10 minutes per asset
                     )
+                )
+
+                extracted_metadata = (
+                    self._run_async(
+                        lambda svc: svc.poll_data_assets(
+                            table_id=table_id,
+                            asset_id=asset_id,
+                            interval_seconds=10.0,
+                            max_attempts=60,  # Wait up to 10 minutes per asset
+                        )
+                    )
+                    if is_scanned
+                    else None
                 )
 
                 # Return both asset_id and extracted metadata
