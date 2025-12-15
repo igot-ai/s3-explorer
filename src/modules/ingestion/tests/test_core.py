@@ -33,9 +33,7 @@ class TestIngestionPipeline:
     @pytest.fixture
     def sample_config(self):
         """Create sample job configuration."""
-        catalog = Catalog(
-            id="test-catalog", information="Test documents", content="Test catalog"
-        )
+        catalog = Catalog(id="test-catalog", instruction="Test documents")
         return IngestionJobConfig(
             source_path="test/", catalogs=[catalog], pages_to_read=3
         )

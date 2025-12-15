@@ -19,25 +19,22 @@ class TestCatalog:
         """Test creating a valid catalog."""
         catalog = Catalog(
             id="test-catalog",
-            information="Test documents",
-            content="Description of test catalog",
+            instruction="Test documents",
             fetch_all_metadata=True,
-            metadata_scan={"field1": "string", "field2": "boolean"},
         )
         assert catalog.id == "test-catalog"
-        assert catalog.information == "Test documents"
+        assert catalog.instruction == "Test documents"
         assert catalog.fetch_all_metadata is True
-        assert len(catalog.metadata_scan) == 2
 
     def test_catalog_validation_empty_id(self):
         """Test that empty catalog ID raises ValueError."""
         with pytest.raises(ValueError, match="Catalog id cannot be empty"):
-            Catalog(id="", information="Test", content="Test")
+            Catalog(id="", instruction="Test")
 
-    def test_catalog_validation_empty_information(self):
-        """Test that empty information raises ValueError."""
-        with pytest.raises(ValueError, match="Catalog information cannot be empty"):
-            Catalog(id="test", information="", content="Test")
+    def test_catalog_validation_empty_instruction(self):
+        """Test that empty instruction raises ValueError."""
+        with pytest.raises(ValueError, match="Catalog instruction cannot be empty"):
+            Catalog(id="test", instruction="")
 
 
 class TestFileContext:
@@ -154,7 +151,7 @@ class TestIngestionJobConfig:
 
     def test_job_config_creation(self):
         """Test creating a job configuration."""
-        catalog = Catalog(id="test", information="Test", content="Test")
+        catalog = Catalog(id="test", instruction="Test")
         config = IngestionJobConfig(
             source_path="s3://bucket/source/", catalogs=[catalog], pages_to_read=3
         )
@@ -165,7 +162,7 @@ class TestIngestionJobConfig:
 
     def test_job_config_validation_empty_source(self):
         """Test that empty source_path raises ValueError."""
-        catalog = Catalog(id="test", information="Test", content="Test")
+        catalog = Catalog(id="test", instruction="Test")
         with pytest.raises(ValueError, match="source_path cannot be empty"):
             IngestionJobConfig(source_path="", catalogs=[catalog])
 
@@ -176,7 +173,7 @@ class TestIngestionJobConfig:
 
     def test_job_config_validation_invalid_pages(self):
         """Test that invalid pages_to_read raises ValueError."""
-        catalog = Catalog(id="test", information="Test", content="Test")
+        catalog = Catalog(id="test", instruction="Test")
         with pytest.raises(ValueError, match="pages_to_read must be at least 1"):
             IngestionJobConfig(
                 source_path="s3://bucket/", catalogs=[catalog], pages_to_read=0
@@ -184,8 +181,8 @@ class TestIngestionJobConfig:
 
     def test_get_catalog_by_id(self):
         """Test finding catalog by ID."""
-        catalog1 = Catalog(id="cat1", information="Test1", content="Test1")
-        catalog2 = Catalog(id="cat2", information="Test2", content="Test2")
+        catalog1 = Catalog(id="cat1", instruction="Test1")
+        catalog2 = Catalog(id="cat2", instruction="Test2")
         config = IngestionJobConfig(
             source_path="s3://bucket/", catalogs=[catalog1, catalog2]
         )

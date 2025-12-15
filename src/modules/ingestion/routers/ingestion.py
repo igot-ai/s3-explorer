@@ -152,13 +152,8 @@ def run_ingestion():
             "catalogs": [
                 {
                     "id": "legal-contracts",
-                    "information": "Documents containing legal contracts...",
-                    "content": "Legal domain documents",
+                    "instruction": "Legal domain documents",
                     "fetch_all_metadata": false,
-                    "metadata_scan": {
-                        "legal_entity": "string - name of the legal entity",
-                        "contract_type": "string - type of contract"
-                    }
                 }
             ]
         }
@@ -220,10 +215,8 @@ def run_ingestion():
         catalogs = [
             Catalog(
                 id=cat["id"],
-                information=cat["information"],
-                content=cat["content"],
+                instruction=cat["instruction"],
                 fetch_all_metadata=cat.get("fetch_all_metadata", False),
-                metadata_scan=cat.get("metadata_scan", {}),
             )
             for cat in req["catalogs"]
         ]

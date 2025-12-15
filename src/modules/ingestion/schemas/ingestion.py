@@ -9,24 +9,14 @@ class CatalogSchema(Schema):
     id = fields.Str(
         required=True, metadata={"description": "Unique identifier for the catalog"}
     )
-    information = fields.Str(
-        required=True, metadata={"description": "Classification instruction for LLM"}
-    )
-    content = fields.Str(
-        required=True,
-        metadata={"description": "Human-readable description of this catalog"},
+    instruction = fields.Str(
+        required=True, metadata={"description": "Collection instruction for LLM"}
     )
     fetch_all_metadata = fields.Bool(
         load_default=False,
         metadata={
             "description": "If True, aggregate metadata from all catalogs for the folder"
         },
-    )
-    metadata_scan = fields.Dict(
-        keys=fields.Str(),
-        values=fields.Raw(),
-        load_default=dict,
-        metadata={"description": "Schema of metadata fields to extract"},
     )
 
 

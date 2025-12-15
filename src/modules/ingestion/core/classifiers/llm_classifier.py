@@ -100,7 +100,7 @@ class LLMClassifier(Classifier):
                 [
                     {
                         "id": catalog.to_dict().get("id"),
-                        "information": catalog.to_dict().get("information"),
+                        "instruction": catalog.to_dict().get("instruction"),
                     }
                     for catalog in catalogs
                 ],

@@ -28,33 +28,27 @@ class Catalog:
 
     Attributes:
         id: Unique identifier for the catalog
-        information: Classification instruction for LLM (how to identify documents)
-        content: Human-readable description of this catalog
+        instruction: Classification instruction for LLM (how to identify documents)
         fetch_all_metadata: If True, aggregate metadata from all catalogs for the folder
-        metadata_scan: Schema of metadata fields to extract (field_name -> type/description)
     """
 
     id: str
-    information: str
-    content: str
+    instruction: str
     fetch_all_metadata: bool = False
-    metadata_scan: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         """Validate catalog configuration."""
         if not self.id:
             raise ValueError("Catalog id cannot be empty")
-        if not self.information:
-            raise ValueError("Catalog information cannot be empty")
+        if not self.instruction:
+            raise ValueError("Catalog instruction cannot be empty")
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert catalog to dictionary."""
         return {
             "id": self.id,
-            "information": self.information,
-            "content": self.content,
+            "instruction": self.instruction,
             "fetch_all_metadata": self.fetch_all_metadata,
-            "metadata_scan": self.metadata_scan,
         }
 
 
@@ -157,7 +151,7 @@ class IngestionJobConfig:
 class ClassificationResult(BaseModel):
     """Result of document classification.
 
-    Contains the classified catalog and confidence information.
+    Contains the classified catalog and confidence score.
     """
 
     category_id: str

@@ -126,10 +126,8 @@ class CatalogRegistry:
             "catalogs": [
                 {
                     "id": c.id,
-                    "information": c.information,
-                    "content": c.content,
+                    "instruction": c.instruction,
                     "fetch_all_metadata": c.fetch_all_metadata,
-                    "metadata_scan": c.metadata_scan,
                     "target_path": c.target_path,
                 }
                 for c in self.catalogs
@@ -149,10 +147,8 @@ class CatalogRegistry:
             "catalogs": [
                 {
                     "id": c.id,
-                    "information": c.information,
-                    "content": c.content,
+                    "instruction": c.instruction,
                     "fetch_all_metadata": c.fetch_all_metadata,
-                    "metadata_scan": c.metadata_scan,
                     "target_path": c.target_path,
                 }
                 for c in self.catalogs

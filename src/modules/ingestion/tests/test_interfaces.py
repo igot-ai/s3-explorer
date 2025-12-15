@@ -137,7 +137,7 @@ class MockAPICollectionHandler(APICollectionHandler):
         return {"id": catalog_id, "name": f"Collection {catalog_id}"}
 
     def create_collection(self, catalog: Catalog) -> Dict:
-        return {"id": catalog.id, "name": catalog.content}
+        return {"id": catalog.id, "name": catalog.instruction}
 
     def update_collection_metadata(
         self, catalog_id: str, metadata: Dict[str, Any]
@@ -308,7 +308,7 @@ class TestClassifier:
 
     def test_classify(self):
         classifier = MockClassifier()
-        catalog = Catalog(id="test", information="Test", content="Test catalog")
+        catalog = Catalog(id="test", instruction="Test catalog")
         result = classifier.classify("document text", "file.pdf", [catalog])
 
         assert isinstance(result, ClassificationResult)
@@ -322,7 +322,7 @@ class TestCollectionHandler:
     def test_upload(self):
         handler = MockCollectionHandler()
         file_ctx = FileContext(source_path="test.pdf")
-        catalog = Catalog(id="test", information="Test", content="Test")
+        catalog = Catalog(id="test", instruction="Test")
         file_stream = BytesIO(b"content")
         metadata = {"field1": "value1"}
 
@@ -333,7 +333,7 @@ class TestCollectionHandler:
     def test_upload_with_folder_context(self):
         handler = MockCollectionHandler()
         file_ctx = FileContext(source_path="test.pdf")
-        catalog = Catalog(id="test", information="Test", content="Test")
+        catalog = Catalog(id="test", instruction="Test")
         folder_ctx = FolderContext(folder_path="folder1/")
         file_stream = BytesIO(b"content")
 
@@ -345,7 +345,7 @@ class TestCollectionHandler:
     def test_build_destination_path(self):
         handler = MockCollectionHandler()
         file_ctx = FileContext(source_path="test.pdf")
-        catalog = Catalog(id="test", information="Test", content="Test")
+        catalog = Catalog(id="test", instruction="Test")
 
         path = handler.build_destination_path(file_ctx, catalog)
         assert "collections/test/" in path
@@ -379,7 +379,7 @@ class TestAPICollectionHandler:
 
     def test_create_collection(self):
         handler = MockAPICollectionHandler()
-        catalog = Catalog(id="test", information="Test", content="Test Catalog")
+        catalog = Catalog(id="test", instruction="Test Catalog")
 
         collection = handler.create_collection(catalog)
         assert isinstance(collection, dict)

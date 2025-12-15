@@ -9,14 +9,10 @@ class CatalogSchema(BaseModel):
     """Schema for a document catalog/category."""
 
     id: str = Field(..., description="Unique identifier for the catalog")
-    information: str = Field(..., description="Classification instruction for LLM")
-    content: str = Field(..., description="Human-readable description of this catalog")
+    instruction: str = Field(..., description="Classification instruction for LLM")
     fetch_all_metadata: bool = Field(
         default=False,
         description="If True, aggregate metadata from all catalogs for the folder",
-    )
-    metadata_scan: Dict[str, Any] = Field(
-        default_factory=dict, description="Schema of metadata fields to extract"
     )
 
 
