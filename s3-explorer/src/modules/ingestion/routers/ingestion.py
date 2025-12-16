@@ -1,32 +1,34 @@
 from flask import Blueprint, jsonify, request
-from ingestion.config.settings import IngestionConfig
-from ingestion.core.classifiers.llm_classifier import LLMClassifier
-from ingestion.core.connectors import get_storage_provider
+from marshmallow import ValidationError
+from src.modules.ingestion.config.settings import IngestionConfig
+from src.modules.ingestion.core.classifiers.llm_classifier import LLMClassifier
+from src.modules.ingestion.core.connectors import get_storage_provider
 
 # Import implementations
-from ingestion.core.connectors.s3_connector import S3SourceConnector
-from ingestion.core.handlers.api_handler import DataCollectionAPIHandler
-from ingestion.core.models import (
+from src.modules.ingestion.core.connectors.s3_connector import S3SourceConnector
+from src.modules.ingestion.core.handlers.api_handler import DataCollectionAPIHandler
+from src.modules.ingestion.core.models import (
     Catalog,
     FileContext,
     FolderContext,
     IngestionJobConfig,
 )
-from ingestion.core.pipeline import IngestionPipeline
-from ingestion.core.processors.base import FileProcessorChain
-from ingestion.core.processors.converter import DocxToPdfConverter
-from ingestion.core.processors.extractor import ArchiveExtractor, SimpleZipExtractor
-from ingestion.core.readers.markitdown_reader import MarkitdownReader
-from ingestion.core.readers.pdfplumber_reader import PDFPlumberReader
-from ingestion.core.readers.pymupdf_reader import PyMuPDFReader
-from ingestion.env import AUTH_TOKEN
-from ingestion.schemas.ingestion import (
+from src.modules.ingestion.core.pipeline import IngestionPipeline
+from src.modules.ingestion.core.processors.base import FileProcessorChain
+from src.modules.ingestion.core.processors.converter import DocxToPdfConverter
+from src.modules.ingestion.core.processors.extractor import (
+    ArchiveExtractor,
+    SimpleZipExtractor,
+)
+from src.modules.ingestion.core.readers.markitdown_reader import MarkitdownReader
+from src.modules.ingestion.core.readers.pdfplumber_reader import PDFPlumberReader
+from src.modules.ingestion.core.readers.pymupdf_reader import PyMuPDFReader
+from src.modules.ingestion.env import AUTH_TOKEN
+from src.modules.ingestion.schemas.ingestion import (
     ingestion_request_schema,
     ingestion_response_schema,
 )
-from marshmallow import ValidationError
-
-from shared._logging import get_logger
+from src.shared._logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -396,7 +398,7 @@ def health_check():
 @ingestion_bp.route("/list-prefixes", methods=["POST"])
 def list_prefixes():
     """List available prefixes/folders in an S3 bucket.
-    
+
     Request Body:
         {
             "storage_provider": "cloudflare",  # Required
@@ -409,7 +411,7 @@ def list_prefixes():
             },
             "prefix": "optional/current/path/"  # Optional, defaults to root
         }
-    
+
     Returns:
         JSON response with list of prefixes:
         {
@@ -429,11 +431,11 @@ def list_prefixes():
                 ),
                 400,
             )
-        
+
         storage_provider_type = data.get("storage_provider", "aws")
         storage_credentials = data.get("storage_credentials", {})
         prefix = data.get("prefix", "")
-        
+
         if not storage_credentials:
             return (
                 jsonify(
@@ -445,10 +447,10 @@ def list_prefixes():
                 ),
                 400,
             )
-        
+
         # Filter out None values from storage credentials
         storage_creds = {k: v for k, v in storage_credentials.items() if v is not None}
-        
+
         # Create storage provider
         try:
             storage_provider = get_storage_provider(
@@ -466,10 +468,10 @@ def list_prefixes():
                 ),
                 400,
             )
-        
+
         # Create source connector
         source_connector = S3SourceConnector(storage_provider)
-        
+
         # List folders/prefixes
         try:
             prefixes = source_connector.list_folders(prefix)
@@ -486,7 +488,7 @@ def list_prefixes():
                 ),
                 500,
             )
-    
+
     except Exception as e:
         logger.error(f"Unexpected error in list_prefixes: {str(e)}", exc_info=True)
         return (

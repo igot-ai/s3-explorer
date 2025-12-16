@@ -3,11 +3,10 @@
 from pathlib import Path
 from typing import BinaryIO, Iterator, List
 
-from ingestion.core.connectors.base import SourceConnector
-from ingestion.core.models import FileContext, FileStatus
-
-from shared._logging import get_logger
-from shared.storage import StorageProvider
+from src.modules.ingestion.core.connectors.base import SourceConnector
+from src.modules.ingestion.core.models import FileContext, FileStatus
+from src.shared._logging import get_logger
+from src.shared.storage import StorageProvider
 
 logger = get_logger(__name__)
 
@@ -38,8 +37,10 @@ class S3SourceConnector(SourceConnector):
         try:
             files = self.provider.list_files(prefix)
             folders = set()
-            
-            logger.debug(f"Listing folders for prefix '{prefix}', got {len(files)} items from provider")
+
+            logger.debug(
+                f"Listing folders for prefix '{prefix}', got {len(files)} items from provider"
+            )
 
             for file in files:
                 file_name = file["name"]
@@ -48,7 +49,9 @@ class S3SourceConnector(SourceConnector):
                 # Handle explicit directory entries
                 if file_type == "directory" or file_name.endswith("/"):
                     # Ensure it ends with /
-                    folder_path = file_name if file_name.endswith("/") else file_name + "/"
+                    folder_path = (
+                        file_name if file_name.endswith("/") else file_name + "/"
+                    )
                     # Check if it's under the prefix
                     if prefix:
                         if folder_path.startswith(prefix):
@@ -78,7 +81,9 @@ class S3SourceConnector(SourceConnector):
                     pass
 
             result = sorted(list(folders))
-            logger.info(f"Found {len(result)} folders under prefix '{prefix}': {result}")
+            logger.info(
+                f"Found {len(result)} folders under prefix '{prefix}': {result}"
+            )
             return result
 
         except Exception as e:

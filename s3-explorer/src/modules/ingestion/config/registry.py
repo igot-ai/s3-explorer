@@ -4,7 +4,7 @@ import json
 from typing import List, Optional
 
 import yaml
-from ingestion.core.models import Catalog
+from src.modules.ingestion.core.models import Catalog
 
 
 class CatalogRegistry:

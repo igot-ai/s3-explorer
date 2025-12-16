@@ -4,18 +4,21 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any, BinaryIO, Dict, Iterator, List
 
-from ingestion.core.classifiers.base import Classifier
-from ingestion.core.connectors.base import SourceConnector
-from ingestion.core.handlers.base import APICollectionHandler, CollectionHandler
-from ingestion.core.models import (
+from src.modules.ingestion.core.classifiers.base import Classifier
+from src.modules.ingestion.core.connectors.base import SourceConnector
+from src.modules.ingestion.core.handlers.base import (
+    APICollectionHandler,
+    CollectionHandler,
+)
+from src.modules.ingestion.core.models import (
     Catalog,
     ClassificationResult,
     FileContext,
     FileStatus,
     FolderContext,
 )
-from ingestion.core.processors.base import FileProcessor, FileProcessorChain
-from ingestion.core.readers.base import DocumentReader
+from src.modules.ingestion.core.processors.base import FileProcessor, FileProcessorChain
+from src.modules.ingestion.core.readers.base import DocumentReader
 
 # Mock implementations for testing
 

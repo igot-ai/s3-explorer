@@ -5,10 +5,13 @@ import zipfile
 from pathlib import Path
 
 import pytest
-from ingestion.core.models import FileContext, FileStatus
-from ingestion.core.processors.base import FileProcessorChain
-from ingestion.core.processors.converter import DocxToPdfConverter
-from ingestion.core.processors.extractor import ArchiveExtractor, SimpleZipExtractor
+from src.modules.ingestion.core.models import FileContext, FileStatus
+from src.modules.ingestion.core.processors.base import FileProcessorChain
+from src.modules.ingestion.core.processors.converter import DocxToPdfConverter
+from src.modules.ingestion.core.processors.extractor import (
+    ArchiveExtractor,
+    SimpleZipExtractor,
+)
 
 
 class TestFileProcessorChain:

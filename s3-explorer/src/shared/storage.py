@@ -9,8 +9,7 @@ import boto3
 import s3fs
 from google.cloud import storage
 from google.oauth2 import service_account
-
-from shared._logging import get_logger
+from src.shared._logging import get_logger
 
 logger = get_logger(__name__)
 

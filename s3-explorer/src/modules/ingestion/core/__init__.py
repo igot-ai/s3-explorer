@@ -1,6 +1,6 @@
 """Core components for the ingestion pipeline."""
 
-from .models import (
+from src.modules.ingestion.core.models import (
     Catalog,
     ClassificationResult,
     FileContext,

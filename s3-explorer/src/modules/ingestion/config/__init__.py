@@ -1,6 +1,6 @@
 """Configuration and catalog management."""
 
-from .registry import CatalogRegistry
-from .settings import IngestionConfig
+from src.modules.ingestion.config.registry import CatalogRegistry
+from src.modules.ingestion.config.settings import IngestionConfig
 
 __all__ = ["IngestionConfig", "CatalogRegistry"]

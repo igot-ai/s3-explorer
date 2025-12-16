@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, BinaryIO, Dict, Optional
 
-from ingestion.core.models import Catalog, FileContext, FolderContext
+from src.modules.ingestion.core.models import Catalog, FileContext, FolderContext
 
 
 class CollectionHandler(ABC):

@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import BinaryIO, Iterator, List
 
-from ingestion.core.models import FileContext
+from src.modules.ingestion.core.models import FileContext
 
 
 class SourceConnector(ABC):

@@ -2,9 +2,9 @@ import json
 from typing import List, Optional
 
 import dspy
-from ingestion.core.classifiers.base import Classifier
-from ingestion.core.models import Catalog, ClassificationResult
-from ingestion.env import (
+from src.modules.ingestion.core.classifiers.base import Classifier
+from src.modules.ingestion.core.models import Catalog, ClassificationResult
+from src.modules.ingestion.env import (
     LLM_API_BASE_URL,
     LLM_API_KEY,
     LLM_API_VERSION,
@@ -13,9 +13,8 @@ from ingestion.env import (
     LLM_PROVIDER,
     LLM_TEMPERATURE,
 )
-from ingestion.utils.llm_helper import LLMHelper
-
-from shared._logging import get_logger
+from src.modules.ingestion.utils.llm_helper import LLMHelper
+from src.shared._logging import get_logger
 
 logger = get_logger(__name__)
 

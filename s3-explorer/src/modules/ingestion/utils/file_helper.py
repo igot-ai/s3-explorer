@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict
 
-from shared._logging import get_logger
+from src.shared._logging import get_logger
 
 logger = get_logger(__name__)
 

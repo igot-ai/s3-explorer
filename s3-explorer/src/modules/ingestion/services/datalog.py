@@ -8,9 +8,8 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import httpx
-from ingestion.env import API_BASE_URL
-
-from shared._logging import get_logger
+from src.modules.ingestion.env import API_BASE_URL
+from src.shared._logging import get_logger
 
 logger = get_logger(__name__)
 

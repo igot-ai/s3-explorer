@@ -4,9 +4,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List
 
-from ingestion.core.models import FileContext, FileStatus
-
-from shared._logging import get_logger
+from src.modules.ingestion.core.models import FileContext, FileStatus
+from src.shared._logging import get_logger
 
 logger = get_logger(__name__)
 
