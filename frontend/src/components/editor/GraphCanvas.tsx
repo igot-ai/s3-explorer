@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -13,6 +13,7 @@ import {
   type OnNodesChange,
   type OnEdgesChange,
   type OnConnect,
+  type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -62,6 +63,7 @@ export function GraphCanvas() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState<AnyNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
 
   // Sync nodes when routine changes
   useEffect(() => {
@@ -173,13 +175,13 @@ export function GraphCanvas() {
       event.preventDefault();
       
       const type = event.dataTransfer.getData('application/reactflow') as NodeType;
-      if (!type) return;
+      if (!type || !reactFlowInstance.current) return;
 
-      const reactFlowBounds = event.currentTarget.getBoundingClientRect();
-      const position = {
-        x: event.clientX - reactFlowBounds.left - 80,
-        y: event.clientY - reactFlowBounds.top - 30,
-      };
+      // Convert screen coordinates to flow coordinates (accounts for zoom and pan)
+      const position = reactFlowInstance.current.screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
 
       const newNode: Node = {
         id: `node-${Date.now()}`,
@@ -195,13 +197,18 @@ export function GraphCanvas() {
     [addNode, setSelectedNodeId, getDefaultNodeData]
   );
 
+  // Store ReactFlow instance when initialized
+  const handleInit = useCallback((instance: ReactFlowInstance) => {
+    reactFlowInstance.current = instance;
+  }, []);
+
   const handleDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
   return (
-    <div className="flex-1 h-full" onDrop={handleDrop} onDragOver={handleDragOver}>
+    <div className="flex-1 h-full">
       <ReactFlow
         nodes={nodes.map((n) => ({ ...n, selected: n.id === selectedNodeId }))}
         edges={edges}
@@ -210,6 +217,9 @@ export function GraphCanvas() {
         onConnect={handleConnect}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onInit={handleInit}
         nodeTypes={nodeTypes}
         fitView
         snapToGrid
