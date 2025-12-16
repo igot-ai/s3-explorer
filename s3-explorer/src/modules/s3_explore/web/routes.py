@@ -33,11 +33,23 @@ mimetypes.add_type("image/heic", ".heic")
 mimetypes.add_type("image/heif", ".heif")
 
 
+def _url_for(endpoint, **values):
+    generated_url = url_for(endpoint, _external=False, **values)
+    if request.script_root and request.script_root != "/":
+        script_root = request.script_root.rstrip("/")
+        if not (
+            generated_url.startswith(script_root)
+            or generated_url.startswith(script_root + "/")
+        ):
+            generated_url = script_root + generated_url
+    return generated_url
+
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if "authenticated" not in session:
-            return redirect(url_for("s3_explore.configure_storage"))
+            return redirect(_url_for("s3_explore.configure_storage"))
         return f(*args, **kwargs)
 
     return decorated_function
@@ -62,7 +74,7 @@ def get_current_provider():
 def index():
     provider = get_current_provider()
     if not provider:
-        return redirect(url_for("s3_explore.configure_storage"))
+        return redirect(_url_for("s3_explore.configure_storage"))
     return render_template("index.html")
 
 
@@ -516,7 +528,7 @@ def delete_folder():
 @s3_explore_bp.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("s3_explore.configure_storage"))
+    return redirect(_url_for("s3_explore.configure_storage"))
 
 
 @s3_explore_bp.route("/share/<path:filename>")

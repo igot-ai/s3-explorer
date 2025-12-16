@@ -18,7 +18,17 @@ def _load_optional_env(var_name: str, default_value: str) -> str:
 
 
 # Load the .env file
-DOT_ENV_FILE_PATH = Path(__file__).parent.parent.parent.parent / ".env"
+def _find_env_file() -> Path:
+    cwd = Path.cwd()
+    for parent in [cwd] + list(cwd.parents):
+        env_file = parent / ".env"
+        if env_file.exists():
+            return env_file
+
+    return Path(__file__).parent.parent.parent.parent / ".env"
+
+
+DOT_ENV_FILE_PATH = _find_env_file()
 load_dotenv(DOT_ENV_FILE_PATH, override=True)
 
 # LLM

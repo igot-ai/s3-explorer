@@ -462,6 +462,16 @@
     </div>
 
     <script>
+        const INDEX_URL = "{{ url_for('s3_explore.index') }}";
+        const APP_BASE_PATH = "{{ request.script_root or '' }}";
+
+        function buildUrl(path) {
+            if (!path.startsWith('/')) {
+                path = '/' + path;
+            }
+            return (APP_BASE_PATH || '').replace(/\/$/, '') + path;
+        }
+
         // Get CSRF token from cookie
         function getCsrfToken() {
             const name = 'csrf_token=';
@@ -479,7 +489,7 @@
         // Fetch new CSRF token
         async function refreshCsrfToken() {
             try {
-                const response = await fetch('/get-csrf-token');
+                const response = await fetch(buildUrl('/get-csrf-token'));
                 const data = await response.json();
                 return data.csrf_token;
             } catch (error) {
@@ -698,7 +708,7 @@
                     }
 
                     console.log('Configuration successful, redirecting...');
-                    window.location.href = '/';
+                    window.location.href = INDEX_URL || '/';
 
                 } catch (error) {
                     console.error('Error during form submission:', error);

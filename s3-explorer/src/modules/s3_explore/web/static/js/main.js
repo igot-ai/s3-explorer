@@ -6,11 +6,20 @@ class FileExplorer {
         this.viewMode = 'grid'; // 'grid' or 'list'
         this.folderStructure = {};
         this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        this.basePath = (window.APP_BASE_PATH || '').replace(/\/$/, '');
 
         this.initializeElements();
         this.attachEventListeners();
         this.loadFolderStructure();
         this.navigateToFolder('');
+    }
+
+    buildUrl(path) {
+        // Ensure path starts with /
+        if (!path.startsWith('/')) {
+            path = '/' + path;
+        }
+        return this.basePath + path;
     }
 
     initializeElements() {
@@ -172,7 +181,7 @@ class FileExplorer {
         formData.append('folder', this.currentPath);
 
         try {
-            const response = await fetch('/upload', {
+            const response = await fetch(this.buildUrl('/upload'), {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': this.csrfToken
@@ -246,7 +255,7 @@ class FileExplorer {
 
     async loadFiles() {
         try {
-            const response = await fetch(`/list?prefix=${encodeURIComponent(this.currentPath)}`);
+            const response = await fetch(this.buildUrl(`/list?prefix=${encodeURIComponent(this.currentPath)}`));
             const data = await response.json();
 
             if (data.error) {
@@ -264,7 +273,7 @@ class FileExplorer {
     async loadFolderStructure() {
         try {
             // Load only root-level folders initially
-            const response = await fetch('/list?prefix=');
+            const response = await fetch(this.buildUrl('/list?prefix='));
             const data = await response.json();
 
             if (data.files) {
@@ -280,7 +289,7 @@ class FileExplorer {
     async loadSubfolders(folderPath) {
         try {
             // Fetch contents of a specific folder
-            const response = await fetch(`/list?prefix=${encodeURIComponent(folderPath)}`);
+            const response = await fetch(this.buildUrl(`/list?prefix=${encodeURIComponent(folderPath)}`));
             const data = await response.json();
 
             if (data.files) {
@@ -877,7 +886,7 @@ class FileExplorer {
     // File Operations
     async openFile(path) {
         try {
-            const response = await fetch(`/share/${encodeURIComponent(path)}`);
+            const response = await fetch(this.buildUrl(`/share/${encodeURIComponent(path)}`));
             const data = await response.json();
 
             if (data.preview_url) {
@@ -914,12 +923,12 @@ class FileExplorer {
     }
 
     async downloadFile(path) {
-        window.location.href = `/download/${encodeURIComponent(path)}`;
+        window.location.href = this.buildUrl(`/download/${encodeURIComponent(path)}`);
     }
 
     async shareFile(path) {
         try {
-            const response = await fetch(`/share/${encodeURIComponent(path)}`);
+            const response = await fetch(this.buildUrl(`/share/${encodeURIComponent(path)}`));
             const data = await response.json();
 
             if (data.url) {
@@ -935,7 +944,7 @@ class FileExplorer {
         if (!confirm(`Are you sure you want to delete "${path}"?`)) return;
 
         try {
-            const response = await fetch(`/delete/${encodeURIComponent(path)}`, {
+            const response = await fetch(this.buildUrl(`/delete/${encodeURIComponent(path)}`), {
                 method: 'DELETE',
                 headers: {
                     'X-CSRFToken': this.csrfToken
@@ -984,7 +993,7 @@ class FileExplorer {
         if (!folderName) return;
 
         try {
-            const response = await fetch('/create_folder', {
+            const response = await fetch(this.buildUrl('/create_folder'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
