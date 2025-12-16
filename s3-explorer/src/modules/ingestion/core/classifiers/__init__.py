@@ -1,6 +1,6 @@
 """Classifiers for document classification using LLM."""
 
-from .base import Classifier
-from .llm_classifier import LLMClassifier
+from src.modules.ingestion.core.classifiers.base import Classifier
+from src.modules.ingestion.core.classifiers.llm_classifier import LLMClassifier
 
 __all__ = ["Classifier", "LLMClassifier"]

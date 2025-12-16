@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 import yaml
-from ingestion.env import API_BASE_URL, READER_TYPE, TEMP_DIR
+from src.modules.ingestion.env import API_BASE_URL, READER_TYPE, TEMP_DIR
 
 
 @dataclass

@@ -6,12 +6,11 @@ import asyncio
 import concurrent.futures
 from typing import Any, BinaryIO, Dict, Optional
 
-from ingestion.core.handlers.base import APICollectionHandler
-from ingestion.core.models import Catalog, FileContext, FolderContext
-from ingestion.env import API_BASE_URL
-from ingestion.services.datalog import DatalogService
-
-from shared._logging import get_logger
+from src.modules.ingestion.core.handlers.base import APICollectionHandler
+from src.modules.ingestion.core.models import Catalog, FileContext, FolderContext
+from src.modules.ingestion.env import API_BASE_URL
+from src.modules.ingestion.services.datalog import DatalogService
+from src.shared._logging import get_logger
 
 logger = get_logger(__name__)
 

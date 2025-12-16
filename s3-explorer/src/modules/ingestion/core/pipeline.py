@@ -5,20 +5,19 @@ import time
 from pathlib import Path
 from typing import Callable, List, Optional
 
-from ingestion.core.classifiers.base import Classifier
-from ingestion.core.connectors.base import SourceConnector
-from ingestion.core.handlers.base import CollectionHandler
-from ingestion.core.models import (
+from src.modules.ingestion.core.classifiers.base import Classifier
+from src.modules.ingestion.core.connectors.base import SourceConnector
+from src.modules.ingestion.core.handlers.base import CollectionHandler
+from src.modules.ingestion.core.models import (
     FileContext,
     FileStatus,
     FolderContext,
     IngestionJobConfig,
     PipelineResult,
 )
-from ingestion.core.processors.base import FileProcessorChain
-from ingestion.core.readers.base import DocumentReader
-
-from shared._logging import get_logger
+from src.modules.ingestion.core.processors.base import FileProcessorChain
+from src.modules.ingestion.core.readers.base import DocumentReader
+from src.shared._logging import get_logger
 
 logger = get_logger(__name__)
 

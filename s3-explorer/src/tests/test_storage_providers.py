@@ -7,8 +7,7 @@ import io
 from unittest.mock import Mock, patch
 
 import pytest
-
-from shared.storage import (
+from src.shared.storage import (
     AWSS3Provider,
     CloudflareR2Provider,
     DigitalOceanSpacesProvider,
@@ -30,7 +29,7 @@ TEST_ACCOUNT_ID = "test-account-123"
 class TestAWSProvider:
     """Test AWS S3 Provider"""
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_init(self, mock_s3fs_cls):
         """Test AWS provider initialization"""
         provider = AWSS3Provider(
@@ -47,7 +46,7 @@ class TestAWSProvider:
             client_kwargs={"region_name": TEST_REGION},
         )
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_upload_file(self, mock_s3fs_cls):
         """Test file upload"""
         mock_fs = Mock()
@@ -69,7 +68,7 @@ class TestAWSProvider:
         mock_fs.open.assert_called_once_with(f"{TEST_BUCKET}/{TEST_FILENAME}", "wb")
         mock_writer.write.assert_called_once_with(TEST_FILE_CONTENT)
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_download_file(self, mock_s3fs_cls):
         """Test file download"""
         mock_fs = Mock()
@@ -92,7 +91,7 @@ class TestAWSProvider:
         assert result.read() == TEST_FILE_CONTENT
         mock_fs.open.assert_called_once_with(f"{TEST_BUCKET}/{TEST_FILENAME}", "rb")
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_list_files(self, mock_s3fs_cls):
         """Test listing files"""
         mock_fs = Mock()
@@ -113,7 +112,7 @@ class TestAWSProvider:
         assert files[1]["name"] == "file2.txt"
         assert files[1]["size"] == 200
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_list_files_with_prefix(self, mock_s3fs_cls):
         """Test listing files with prefix"""
         mock_fs = Mock()
@@ -127,7 +126,7 @@ class TestAWSProvider:
 
         mock_fs.ls.assert_called_once_with(f"{TEST_BUCKET}/folder/", detail=True)
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_delete_file(self, mock_s3fs_cls):
         """Test file deletion"""
         mock_fs = Mock()
@@ -140,7 +139,7 @@ class TestAWSProvider:
 
         mock_fs.rm.assert_called_once_with(f"{TEST_BUCKET}/{TEST_FILENAME}")
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_get_file_url(self, mock_s3fs_cls):
         """Test presigned URL generation"""
         mock_fs = Mock()
@@ -161,7 +160,7 @@ class TestAWSProvider:
 class TestWasabiProvider:
     """Test Wasabi Provider"""
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_init_with_correct_endpoint(self, mock_s3fs_cls):
         """Test Wasabi provider initialization with correct endpoint"""
         provider = WasabiProvider(
@@ -174,7 +173,7 @@ class TestWasabiProvider:
         assert provider.bucket == TEST_BUCKET
         mock_s3fs_cls.assert_called_once()
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_upload_file(self, mock_s3fs_cls):
         """Test Wasabi file upload (delegates to base implementation)."""
         mock_fs = Mock()
@@ -199,7 +198,7 @@ class TestWasabiProvider:
 class TestCloudflareR2Provider:
     """Test Cloudflare R2 Provider"""
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_init_with_account_id(self, mock_s3fs_cls):
         """Test Cloudflare R2 provider initialization"""
         provider = CloudflareR2Provider(
@@ -217,7 +216,7 @@ class TestCloudflareR2Provider:
 class TestDigitalOceanProvider:
     """Test DigitalOcean Spaces Provider"""
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_init_with_correct_endpoint(self, mock_s3fs_cls):
         """Test DigitalOcean provider initialization"""
         provider = DigitalOceanSpacesProvider(
@@ -234,7 +233,7 @@ class TestDigitalOceanProvider:
 class TestHetznerProvider:
     """Test Hetzner Storage Provider"""
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_init_with_correct_endpoint(self, mock_s3fs_cls):
         """Test Hetzner provider initialization"""
         provider = HetznerStorageProvider(
@@ -251,7 +250,7 @@ class TestHetznerProvider:
 class TestProviderFactory:
     """Test get_storage_provider factory function"""
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_get_aws_provider(self, _mock_s3fs_cls):
         """Test factory creates AWS provider"""
         provider = get_storage_provider(
@@ -263,7 +262,7 @@ class TestProviderFactory:
         )
         assert isinstance(provider, AWSS3Provider)
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_get_wasabi_provider(self, _mock_s3fs_cls):
         """Test factory creates Wasabi provider"""
         provider = get_storage_provider(
@@ -275,7 +274,7 @@ class TestProviderFactory:
         )
         assert isinstance(provider, WasabiProvider)
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_get_cloudflare_provider(self, _mock_s3fs_cls):
         """Test factory creates Cloudflare R2 provider"""
         provider = get_storage_provider(
@@ -287,7 +286,7 @@ class TestProviderFactory:
         )
         assert isinstance(provider, CloudflareR2Provider)
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_get_digitalocean_provider(self, _mock_s3fs_cls):
         """Test factory creates DigitalOcean provider"""
         provider = get_storage_provider(
@@ -299,7 +298,7 @@ class TestProviderFactory:
         )
         assert isinstance(provider, DigitalOceanSpacesProvider)
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_get_hetzner_provider(self, _mock_s3fs_cls):
         """Test factory creates Hetzner provider"""
         provider = get_storage_provider(
@@ -320,7 +319,7 @@ class TestProviderFactory:
 class TestEdgeCases:
     """Test edge cases and error handling"""
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_empty_file_upload(self, mock_s3fs_cls):
         """Test uploading empty file"""
         mock_fs = Mock()
@@ -342,7 +341,7 @@ class TestEdgeCases:
         mock_fs.open.assert_called_once_with(f"{TEST_BUCKET}/empty.txt", "wb")
         mock_writer.write.assert_called_once_with(b"")
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_list_files_empty_bucket(self, mock_s3fs_cls):
         """Test listing files in empty bucket"""
         mock_fs = Mock()
@@ -356,7 +355,7 @@ class TestEdgeCases:
 
         assert files == []
 
-    @patch("shared.storage.s3fs.S3FileSystem")
+    @patch("src.shared.storage.s3fs.S3FileSystem")
     def test_large_file_handling(self, mock_s3fs_cls):
         """Test handling large files"""
         mock_fs = Mock()

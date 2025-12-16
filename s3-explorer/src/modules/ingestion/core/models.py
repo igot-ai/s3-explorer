@@ -5,8 +5,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, field_validator
-
-from shared._logging import get_logger
+from src.shared._logging import get_logger
 
 logger = get_logger(__name__)
 

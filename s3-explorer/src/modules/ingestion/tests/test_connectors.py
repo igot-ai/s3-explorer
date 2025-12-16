@@ -3,7 +3,7 @@
 import io
 from unittest.mock import Mock
 
-from ingestion.core.connectors.s3_connector import S3SourceConnector
+from src.modules.ingestion.core.connectors.s3_connector import S3SourceConnector
 
 
 class TestS3SourceConnector:

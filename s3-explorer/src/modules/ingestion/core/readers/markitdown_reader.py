@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import pymupdf
-from ingestion.core.readers.base import DocumentReader
-from ingestion.core.readers.extractor.markitdown_file_extraction import (
+from src.modules.ingestion.core.readers.base import DocumentReader
+from src.modules.ingestion.core.readers.extractor.markitdown_file_extraction import (
     MarkitdownFileExtractor,
 )
 

@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from ingestion.core.models import Catalog, ClassificationResult
+from src.modules.ingestion.core.models import Catalog, ClassificationResult
 
 
 class Classifier(ABC):

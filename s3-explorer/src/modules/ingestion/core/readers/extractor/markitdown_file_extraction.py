@@ -4,27 +4,26 @@ from typing import List
 
 import dspy
 import pymupdf
-from ingestion.core.mock_model import MockOpenAIClient
-from ingestion.env import (
+from markitdown import MarkItDown
+from PIL import Image
+from src.modules.ingestion.core.mock_model import MockOpenAIClient
+from src.modules.ingestion.env import (
     LLM_API_BASE_URL,
     LLM_API_KEY,
     LLM_API_VERSION,
     LLM_MODEL_ID,
     LLM_PROVIDER,
 )
-from ingestion.utils.constant import (
+from src.modules.ingestion.utils.constant import (
     IMAGE_EXTENSIONS,
     MARKITDOWN_IMAGE_EXTENSIONS,
     MAX_WORKERS,
     PDF_EXTENSIONS,
     SUPPORTED_DOCUMENT_EXTENSIONS,
 )
-from ingestion.utils.file_helper import FileHelper
-from ingestion.utils.llm_helper import LLMHelper
-from markitdown import MarkItDown
-from PIL import Image
-
-from shared._logging import get_logger
+from src.modules.ingestion.utils.file_helper import FileHelper
+from src.modules.ingestion.utils.llm_helper import LLMHelper
+from src.shared._logging import get_logger
 
 logger = get_logger(__name__)
 

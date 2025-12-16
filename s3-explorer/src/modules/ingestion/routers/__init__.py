@@ -1,5 +1,5 @@
 """Routers package for ingestion API endpoints."""
 
-from .ingestion import ingestion_bp
+from src.modules.ingestion.routers.ingestion import ingestion_bp
 
 __all__ = ["ingestion_bp"]

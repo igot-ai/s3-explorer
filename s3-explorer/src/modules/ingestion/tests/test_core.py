@@ -4,7 +4,7 @@ import io
 from unittest.mock import Mock
 
 import pytest
-from ingestion.core.models import (
+from src.modules.ingestion.core.models import (
     Catalog,
     ClassificationResult,
     FileContext,
@@ -13,7 +13,7 @@ from ingestion.core.models import (
     IngestionJobConfig,
     PipelineResult,
 )
-from ingestion.core.pipeline import IngestionPipeline
+from src.modules.ingestion.core.pipeline import IngestionPipeline
 
 
 class TestIngestionPipeline:

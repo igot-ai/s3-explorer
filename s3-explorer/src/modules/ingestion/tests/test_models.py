@@ -1,7 +1,7 @@
 """Unit tests for core data models."""
 
 import pytest
-from ingestion.core.models import (
+from src.modules.ingestion.core.models import (
     Catalog,
     ClassificationResult,
     FileContext,
