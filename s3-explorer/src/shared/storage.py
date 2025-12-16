@@ -70,17 +70,31 @@ class S3CompatibleProvider(StorageProvider):
         self.fs.rm(s3_path)
 
     def list_files(self, prefix: str = "") -> List[dict]:
-        """List files using s3fs"""
-        s3_prefix = f"{self.bucket}/{prefix}" if prefix else self.bucket
+        """List files and directories using s3fs"""
+        # When prefix is empty, use bucket/ to list contents (not bucket itself)
+        if prefix:
+            s3_prefix = f"{self.bucket}/{prefix}"
+        else:
+            s3_prefix = f"{self.bucket}/"
         try:
             files = []
             for item in self.fs.ls(s3_prefix, detail=True):
-                if item.get("type") == "file" or item.get("StorageClass"):
+                # Include both files and directories
+                # Files have type="file" or StorageClass, directories have type="directory"
+                item_type = item.get("type")
+                if item_type in ("file", "directory") or item.get("StorageClass"):
                     key = item.get("Key", item.get("name", ""))
                     if key.startswith(f"{self.bucket}/"):
                         key = key[len(f"{self.bucket}/") :]
+                    # Ensure directories end with /
+                    if item_type == "directory" and not key.endswith("/"):
+                        key = key + "/"
                     files.append(
-                        {"name": key, "size": item.get("Size", item.get("size", 0))}
+                        {
+                            "name": key,
+                            "size": item.get("Size", item.get("size", 0)),
+                            "type": item_type,  # Include type for caller to distinguish
+                        }
                     )
             return files
         except FileNotFoundError:

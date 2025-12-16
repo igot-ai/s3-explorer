@@ -13,6 +13,8 @@ import { useRoutineStore } from '@/store';
 import { fetchCollections } from '@/api';
 import type { Node, S3ConnectorData, CollectionData, StorageProviderType } from '@/types';
 import { AWS_REGIONS, WASABI_REGIONS, DIGITALOCEAN_REGIONS, HETZNER_REGIONS } from '@/types';
+import { PrefixCombobox } from './PrefixCombobox';
+import { PrefixBrowserDialog } from './PrefixBrowserDialog';
 
 // Collection type from API
 interface CatalogCollection {
@@ -42,6 +44,7 @@ interface S3ConnectorFieldsProps {
 
 function S3ConnectorFields({ data, updateNodeData }: S3ConnectorFieldsProps) {
   const providerType = data.providerType || 'aws';
+  const [browserDialogOpen, setBrowserDialogOpen] = useState(false);
 
   // Get region options based on provider
   const getRegionOptions = () => {
@@ -242,14 +245,25 @@ function S3ConnectorFields({ data, updateNodeData }: S3ConnectorFieldsProps) {
       {/* Common Fields: Prefix and Sync Mode */}
       <div className="space-y-2">
         <label className="text-sm font-medium">Prefix / Path</label>
-        <Input
+        <PrefixCombobox
           value={data.prefix || ''}
-          onChange={(e) => updateNodeData({ prefix: e.target.value })}
-          placeholder="data/incoming/"
+          onChange={(value) => updateNodeData({ prefix: value })}
+          s3Data={data}
+          onBrowseClick={() => setBrowserDialogOpen(true)}
         />
         <p className="text-xs text-gray-500">
-          Optional path prefix to filter files
+          Optional path prefix to filter files. Click Browse to select a folder path.
         </p>
+        <PrefixBrowserDialog
+          open={browserDialogOpen}
+          onOpenChange={setBrowserDialogOpen}
+          s3Data={data}
+          currentPrefix={data.prefix || ''}
+          onSelect={(prefix) => {
+            updateNodeData({ prefix });
+            setBrowserDialogOpen(false);
+          }}
+        />
       </div>
       <div className="space-y-2">
         <label className="text-sm font-medium">Sync Mode</label>

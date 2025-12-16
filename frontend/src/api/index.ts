@@ -269,5 +269,65 @@ export async function checkIngestionHealth(): Promise<boolean> {
   }
 }
 
+/**
+ * List S3 prefixes/folders for a given storage configuration
+ */
+export async function listS3Prefixes(
+  s3Data: S3ConnectorData,
+  prefix: string = ''
+): Promise<string[]> {
+  // Build storage credentials based on provider type
+  const storageCredentials: Record<string, string> = {};
+  
+  switch (s3Data.providerType) {
+    case 'aws':
+    case 'wasabi':
+    case 'digitalocean':
+    case 'hetzner':
+      if (s3Data.accessKey) storageCredentials.access_key = s3Data.accessKey;
+      if (s3Data.secretKey) storageCredentials.secret_key = s3Data.secretKey;
+      if (s3Data.bucket) storageCredentials.bucket = s3Data.bucket;
+      if (s3Data.region) storageCredentials.region = s3Data.region;
+      break;
+    case 'cloudflare':
+      if (s3Data.accessKey) storageCredentials.access_key = s3Data.accessKey;
+      if (s3Data.secretKey) storageCredentials.secret_key = s3Data.secretKey;
+      if (s3Data.bucket) storageCredentials.bucket = s3Data.bucket;
+      if (s3Data.accountId) storageCredentials.account_id = s3Data.accountId;
+      break;
+    case 'backblaze':
+      if (s3Data.applicationKeyId) storageCredentials.application_key_id = s3Data.applicationKeyId;
+      if (s3Data.applicationKey) storageCredentials.application_key = s3Data.applicationKey;
+      if (s3Data.bucketName) storageCredentials.bucket_name = s3Data.bucketName;
+      break;
+    case 'gcs':
+      if (s3Data.projectId) storageCredentials.project_id = s3Data.projectId;
+      if (s3Data.bucketName) storageCredentials.bucket_name = s3Data.bucketName;
+      if (s3Data.credentialsJson) storageCredentials.credentials_json = s3Data.credentialsJson;
+      break;
+  }
+  
+  const response = await fetch(`${INGESTION_API_URL}/list-prefixes`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${INGESTION_API_TOKEN}`,
+    },
+    body: JSON.stringify({
+      storage_provider: s3Data.providerType,
+      storage_credentials: storageCredentials,
+      prefix: prefix,
+    }),
+  });
+  
+  const data = await response.json();
+  
+  if (!response.ok) {
+    throw new Error(data.message || data.errors?.join(', ') || 'Failed to list prefixes');
+  }
+  
+  return data.prefixes || [];
+}
+
 // Export constants for use elsewhere
 export { AUTH_TOKEN, WORKSPACE_ID, CATALOG_API_URL, INGESTION_API_URL };

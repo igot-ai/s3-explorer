@@ -38,9 +38,24 @@ class S3SourceConnector(SourceConnector):
         try:
             files = self.provider.list_files(prefix)
             folders = set()
+            
+            logger.debug(f"Listing folders for prefix '{prefix}', got {len(files)} items from provider")
 
             for file in files:
                 file_name = file["name"]
+                file_type = file.get("type")
+
+                # Handle explicit directory entries
+                if file_type == "directory" or file_name.endswith("/"):
+                    # Ensure it ends with /
+                    folder_path = file_name if file_name.endswith("/") else file_name + "/"
+                    # Check if it's under the prefix
+                    if prefix:
+                        if folder_path.startswith(prefix):
+                            folders.add(folder_path)
+                    else:
+                        folders.add(folder_path)
+                    continue
 
                 # Remove prefix to get relative path
                 if prefix and file_name.startswith(prefix):
@@ -52,19 +67,22 @@ class S3SourceConnector(SourceConnector):
                 if not relative_path:
                     continue
 
-                # Extract top-level folder
+                # Extract top-level folder from file path
                 if "/" in relative_path:
-                    # This is either a folder or a file in a folder
+                    # This is a file in a folder - extract the folder name
                     folder_name = relative_path.split("/")[0]
                     full_folder_path = prefix + folder_name + "/"
                     folders.add(full_folder_path)
+                elif not prefix:
+                    # At root level, if there's no slash, it's a file at root, skip
+                    pass
 
             result = sorted(list(folders))
-            logger.info(f"Found {len(result)} folders under prefix '{prefix}'")
+            logger.info(f"Found {len(result)} folders under prefix '{prefix}': {result}")
             return result
 
         except Exception as e:
-            logger.error(f"Error listing folders: {str(e)}")
+            logger.error(f"Error listing folders: {str(e)}", exc_info=True)
             return []
 
     def walk_folder(

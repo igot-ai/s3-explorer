@@ -391,3 +391,111 @@ def run_ingestion():
 def health_check():
     """Health check endpoint for the ingestion API."""
     return jsonify({"status": "healthy", "service": "ingestion-pipeline"}), 200
+
+
+@ingestion_bp.route("/list-prefixes", methods=["POST"])
+def list_prefixes():
+    """List available prefixes/folders in an S3 bucket.
+    
+    Request Body:
+        {
+            "storage_provider": "cloudflare",  # Required
+            "storage_credentials": {  # Required
+                "account_id": "...",  # For Cloudflare R2
+                "access_key": "...",
+                "secret_key": "...",
+                "bucket": "...",
+                "region": "..."  # Optional for some providers
+            },
+            "prefix": "optional/current/path/"  # Optional, defaults to root
+        }
+    
+    Returns:
+        JSON response with list of prefixes:
+        {
+            "prefixes": ["folder1/", "folder2/", "nested/path/"]
+        }
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "Request body is required",
+                        "errors": ["No JSON data provided"],
+                    }
+                ),
+                400,
+            )
+        
+        storage_provider_type = data.get("storage_provider", "aws")
+        storage_credentials = data.get("storage_credentials", {})
+        prefix = data.get("prefix", "")
+        
+        if not storage_credentials:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "Storage credentials required",
+                        "errors": ["storage_credentials is required"],
+                    }
+                ),
+                400,
+            )
+        
+        # Filter out None values from storage credentials
+        storage_creds = {k: v for k, v in storage_credentials.items() if v is not None}
+        
+        # Create storage provider
+        try:
+            storage_provider = get_storage_provider(
+                storage_provider_type, **storage_creds
+            )
+        except Exception as e:
+            logger.error(f"Error creating storage provider: {str(e)}")
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "Failed to connect to storage",
+                        "errors": [str(e)],
+                    }
+                ),
+                400,
+            )
+        
+        # Create source connector
+        source_connector = S3SourceConnector(storage_provider)
+        
+        # List folders/prefixes
+        try:
+            prefixes = source_connector.list_folders(prefix)
+            return jsonify({"success": True, "prefixes": prefixes}), 200
+        except Exception as e:
+            logger.error(f"Error listing prefixes: {str(e)}")
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "Failed to list prefixes",
+                        "errors": [str(e)],
+                    }
+                ),
+                500,
+            )
+    
+    except Exception as e:
+        logger.error(f"Unexpected error in list_prefixes: {str(e)}", exc_info=True)
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "Unexpected error",
+                    "errors": [str(e)],
+                }
+            ),
+            500,
+        )
