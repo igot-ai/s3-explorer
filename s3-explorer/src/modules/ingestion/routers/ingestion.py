@@ -255,6 +255,9 @@ def run_ingestion():
         # Filter out None values from storage credentials
         storage_creds = {k: v for k, v in storage_creds.items() if v is not None}
 
+        if config_data["source_path"] and config_data["source_path"].endswith("/"):
+            config_data["source_path"] = config_data["source_path"][:-1]
+
         config = IngestionConfig(
             source_path=config_data["source_path"],
             recursive=config_data.get("recursive", True),
