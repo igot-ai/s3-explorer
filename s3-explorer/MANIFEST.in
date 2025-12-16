@@ -1,0 +1,8 @@
+include README.md
+include LICENSE
+recursive-include src/modules/s3_explore/web/static *
+recursive-include src/modules/s3_explore/web/templates *
+recursive-include src *.py
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * .DS_Store
