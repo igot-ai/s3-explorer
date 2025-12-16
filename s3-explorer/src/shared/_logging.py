@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-LOG_PATH = "../logs"
+LOG_PATH = Path(__file__).parent.parent / "logs"
 
 # Global variable to hold the logger once initialized
 _logger = None
