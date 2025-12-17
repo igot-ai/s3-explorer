@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
+import os
 from typing import Any, BinaryIO, Dict, Optional
 
 from src.modules.ingestion.core.handlers.base import APICollectionHandler
@@ -206,9 +207,14 @@ class DataCollectionAPIHandler(APICollectionHandler):
                 raise ValueError(f"Collection {catalog.id} does not exist")
 
             file_bytes = file_stream.read()
-            content_type = self._guess_content_type(file_context.source_path)
+            if file_context.local_path:
+                filename = os.path.basename(file_context.local_path)
+                content_type = self._guess_content_type(file_context.local_path)
+            else:
+                filename = file_context.source_path.split("/")[-1]
+                content_type = self._guess_content_type(file_context.source_path)
+
             table_id = catalog.id
-            filename = file_context.source_path.split("/")[-1]
             source_id = file_context.source_path
             column_static_data = metadata.get("folder_metadata", {})
             project_id = self.project_id

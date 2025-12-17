@@ -1,8 +1,10 @@
 """Document converter implementations."""
 
+import os
+import shutil
 import subprocess
 from pathlib import Path
-from typing import List
+from typing import Any, Dict, List
 
 from src.modules.ingestion.core.models import FileContext, FileStatus
 from src.modules.ingestion.core.processors.base import FileProcessor
@@ -24,7 +26,32 @@ class DocxToPdfConverter(FileProcessor):
         Args:
             libreoffice_path: Path to LibreOffice executable (default: 'soffice')
         """
-        self.libreoffice_path = libreoffice_path
+        self.libreoffice_path = self._resolve_libreoffice_path(libreoffice_path)
+
+    def _resolve_libreoffice_path(self, path: str) -> str:
+        """Resolve the correct LibreOffice executable path.
+
+        On Windows, we prefer 'soffice.com' over 'soffice.exe' for CLI operations
+        as it handles stdout/stderr correctly and avoids some window popup issues.
+        """
+        if os.name != "nt":
+            return path
+
+        if path != "soffice" and os.path.isabs(path):
+            return path
+
+        candidates = [
+            shutil.which("soffice.com"),
+            r"C:\Program Files\LibreOffice\program\soffice.com",
+            r"C:\Program Files (x86)\LibreOffice\program\soffice.com",
+        ]
+
+        for candidate in candidates:
+            if candidate and os.path.exists(candidate):
+                logger.info(f"Resolved LibreOffice path to: {candidate}")
+                return candidate
+
+        return path
 
     def can_process(self, file_context: FileContext) -> bool:
         """Check if this processor can handle DOCX/DOC files.
@@ -39,6 +66,17 @@ class DocxToPdfConverter(FileProcessor):
             "docx",
             "doc",
         ] or file_context.source_path.lower().endswith((".docx", ".doc"))
+
+    def _get_subprocess_kwargs(self) -> Dict[str, Any]:
+        """Get subprocess arguments to hide window on Windows."""
+        kwargs = {}
+        if os.name == "nt":
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = subprocess.SW_HIDE
+            kwargs["startupinfo"] = startupinfo
+            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+        return kwargs
 
     def process(self, file_context: FileContext, output_dir: Path) -> List[FileContext]:
         """Convert DOCX/DOC to PDF.
@@ -69,10 +107,12 @@ class DocxToPdfConverter(FileProcessor):
                 str(output_dir),
                 str(input_path),
             ]
-
-            logger.info(f"Converting {input_path.name} to PDF...")
             result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=300  # 5 minute timeout
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=300,
+                **self._get_subprocess_kwargs(),
             )
 
             if result.returncode != 0:
@@ -122,11 +162,17 @@ class DocxToPdfConverter(FileProcessor):
             True if LibreOffice is available
         """
         try:
+            # Add input=b'\n' to handle cases where it pauses with "Press Enter..."
             result = subprocess.run(
-                [self.libreoffice_path, "--version"], capture_output=True, timeout=5
+                [self.libreoffice_path, "--version"],
+                capture_output=True,
+                timeout=30,
+                input=b"\n",
+                **self._get_subprocess_kwargs(),
             )
             return result.returncode == 0
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error checking LibreOffice availability: {e}")
             return False
 
 
