@@ -11,6 +11,7 @@ from src.modules.ingestion.env import (
     LLM_API_BASE_URL,
     LLM_API_KEY,
     LLM_API_VERSION,
+    LLM_MAX_TOKEN,
     LLM_MODEL_ID,
     LLM_PROVIDER,
 )
@@ -121,6 +122,7 @@ class MarkitdownFileExtractor:
                 api_key=LLM_API_KEY or None,
                 api_base=LLM_API_BASE_URL or None,
                 api_version=LLM_API_VERSION or None,
+                max_tokens=LLM_MAX_TOKEN,
                 cache=False,
             )
         except Exception as model_error:
