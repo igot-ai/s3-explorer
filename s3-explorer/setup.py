@@ -20,6 +20,7 @@ setup(
         "dataroutine.modules.ingestion.routers",
         "dataroutine.modules.ingestion.schemas",
         "dataroutine.modules.ingestion.services",
+        "dataroutine.modules.ingestion.temporal",
         "dataroutine.modules.ingestion.tests",
         "dataroutine.modules.ingestion.utils",
         "dataroutine.modules.s3_explore",
@@ -39,6 +40,8 @@ setup(
     },
     install_requires=[
         "flask>=3.0.0",
+        "fastapi>=0.104.0",
+        "pydantic>=2.0.0",
         "python-dotenv>=1.0.1",
         "tiktoken>=0.7.0,<1.0.0",
         "boto3>=1.34.7",
