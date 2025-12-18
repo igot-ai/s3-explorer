@@ -1,5 +1,5 @@
 import json
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import dspy
 from src.modules.ingestion.core.classifiers.base import Classifier
@@ -38,6 +38,31 @@ class FileClassification(dspy.Signature):
     reason = dspy.OutputField(desc="Lý do ngắn gọn cho việc phân loại")
 
 
+class FileExtractMetadata(dspy.Signature):
+    """
+    Trích xuất các trường metadata được yêu cầu từ nội dung tệp.
+    Mô hình chỉ tập trung suy luận và điền giá trị cho các trường metadata
+    dựa trên nội dung thực tế của tệp.
+    """
+
+    # Input fields
+    file_content = dspy.InputField(
+        desc="Nội dung thực tế của tệp (text đã được parse) dùng để trích xuất metadata"
+    )
+    metadata = dspy.InputField(
+        desc="Danh sách hoặc schema mô tả các trường metadata cần được trích xuất"
+    )
+
+    # Output fields
+    extracted_metadata = dspy.OutputField(
+        desc=(
+            "Giá trị metadata đã được trích xuất tương ứng với các trường được yêu cầu, "
+            "trả về đúng cấu trúc của metadata đầu vào"
+        ),
+        type=dict,
+    )
+
+
 class LLMClassifier(Classifier):
     """Unified LLM classifier with pluggable provider backends.
 
@@ -74,6 +99,17 @@ class LLMClassifier(Classifier):
         self.api_version = api_version
         self.kwargs = kwargs
 
+        self._llm = dspy.LM(
+            model=self.model,
+            api_key=self.api_key,
+            api_base=self.base_url,
+            api_version=self.api_version,
+            max_tokens=LLM_MAX_TOKEN,
+            temperature=LLM_TEMPERATURE,
+            cache=False,
+            **self.kwargs,
+        )
+
     def classify(
         self, file_content: str, file_name: str, catalogs: List[Catalog]
     ) -> ClassificationResult:
@@ -106,18 +142,7 @@ class LLMClassifier(Classifier):
                 ensure_ascii=False,
             )
 
-            llm = dspy.LM(
-                model=self.model,
-                api_key=self.api_key,
-                api_base=self.base_url,
-                api_version=self.api_version,
-                max_tokens=LLM_MAX_TOKEN,
-                temperature=LLM_TEMPERATURE,
-                cache=False,
-                **self.kwargs,
-            )
-
-            with dspy.context(lm=llm):
+            with dspy.context(lm=self._llm):
                 prediction = classifier(
                     categories=categories_str,
                     category_ids=str(category_ids),
@@ -125,7 +150,6 @@ class LLMClassifier(Classifier):
                     file_content=file_content,
                 )
 
-            # Extract separate fields from prediction
             category_id = getattr(prediction, "category_id", None)
             confidence = getattr(prediction, "confidence", None)
             reason = getattr(prediction, "reason", None)
@@ -146,3 +170,28 @@ class LLMClassifier(Classifier):
         except Exception as e:
             logger.error(f"DSPy classification failed: {e}")
             return fallback_classification
+
+    def extract_metadata(self, text: str, catalog: Catalog) -> Dict[str, Any]:
+        try:
+            extractor = dspy.Predict(FileExtractMetadata)
+
+            with dspy.context(lm=self._llm):
+                result = extractor(
+                    file_content=text,
+                    metadata=catalog.metadata_scan,
+                )
+
+            extracted_metadata = getattr(result, "extracted_metadata", {})
+
+            if isinstance(extracted_metadata, str):
+                extracted_metadata = LLMHelper.parse_llm_json(extracted_metadata)
+
+            logger.info(
+                f"Metadata extraction result: extracted_metadata={extracted_metadata}"
+            )
+
+            return extracted_metadata if isinstance(extracted_metadata, dict) else {}
+
+        except Exception as e:
+            logger.error(f"DSPy metadata extraction failed: {e}")
+            return {}

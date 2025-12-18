@@ -59,21 +59,21 @@ export interface S3ConnectorData {
   providerType: StorageProviderType;
   prefix: string;
   syncMode: 'incremental' | 'full' | 'manual';
-  
+
   // AWS S3 / Wasabi / DigitalOcean / Hetzner common fields
   accessKey?: string;
   secretKey?: string;
   bucket?: string;
   region?: string;
-  
+
   // Cloudflare R2 specific
   accountId?: string;
-  
+
   // Backblaze B2 specific
   applicationKeyId?: string;
   applicationKey?: string;
   bucketName?: string;
-  
+
   // Google Cloud Storage specific
   projectId?: string;
   credentialsJson?: string;
@@ -88,6 +88,7 @@ export interface CollectionData {
   catalogId?: string; // Unique ID for this catalog
   instruction?: string; // Classification instruction for LLM
   fetchAllMetadata?: boolean; // If true, aggregate metadata from all catalogs
+  metadataScan?: Record<string, string>; // { name: prompt_template } for static columns
 }
 
 // ============ Connection Types ============
@@ -155,6 +156,7 @@ export interface IngestionCatalog {
   id: string;
   instruction: string;
   fetch_all_metadata: boolean;
+  metadata_scan?: Record<string, any>;
 }
 
 export interface IngestionRequest {
@@ -200,4 +202,3 @@ export interface ExecutionState {
   response?: IngestionResponse;
   error?: string;
 }
-

@@ -98,12 +98,13 @@ class CollectionHandler(ABC):
         """
         prepared = file_metadata.copy()
 
-        # Add folder-level aggregated metadata if available
-        if folder_context and catalog and catalog.fetch_all_metadata:
-            if catalog.id in folder_context.aggregated_metadata:
-                prepared["folder_metadata"] = folder_context.aggregated_metadata[
-                    catalog.id
-                ]
+        # Add folder-level aggregated metadata if available and not already provided
+        if "folder_metadata" not in prepared:
+            if folder_context and catalog and catalog.fetch_all_metadata:
+                if catalog.id in folder_context.aggregated_metadata:
+                    prepared["folder_metadata"] = folder_context.aggregated_metadata[
+                        catalog.id
+                    ]
 
         return prepared
 

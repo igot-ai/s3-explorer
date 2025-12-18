@@ -277,8 +277,21 @@ class GoogleCloudStorageProvider(StorageProvider):
 
     def list_files(self, prefix: str = "") -> List[dict]:
         try:
-            blobs = self.bucket.list_blobs(prefix=prefix)
-            return [{"name": blob.name, "size": blob.size} for blob in blobs]
+            # Use delimiter='/' to only get objects in the current level
+            # This makes it non-recursive, matching S3 behavior.
+            blobs = self.bucket.list_blobs(prefix=prefix, delimiter="/")
+
+            # 1. Collect files (blobs) at this level
+            result = [
+                {"name": blob.name, "size": blob.size, "type": "file"} for blob in blobs
+            ]
+
+            # 2. Collect sub-directories (prefixes)
+            # The list_blobs call with delimiter populates blobs.prefixes
+            for folder in blobs.prefixes:
+                result.append({"name": folder, "size": 0, "type": "directory"})
+
+            return result
         except Exception as e:
             print(f"Error listing files: {str(e)}")
             raise ValueError(f"Error listing files: {str(e)}")

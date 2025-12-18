@@ -220,6 +220,7 @@ def run_ingestion():
                 id=cat["id"],
                 instruction=cat["instruction"],
                 fetch_all_metadata=cat.get("fetch_all_metadata", False),
+                metadata_scan=cat.get("metadata_scan", {}),
             )
             for cat in req["catalogs"]
         ]
