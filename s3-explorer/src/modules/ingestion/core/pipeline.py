@@ -79,12 +79,8 @@ class IngestionPipeline:
         )
         logger.info(f"Found {len(all_discovered_files)} total files to process")
 
-        # Group files by their parent directory to maintain folder-level batches
         files_by_folder: dict[str, List[FileContext]] = {}
         for file_ctx in all_discovered_files:
-            # Use the directory part of the source path as the folder identity
-            # This ensures test/file.txt and test/sub/file.txt are in different batches
-            # but test/sub/f1.txt and test/sub/f2.txt are in the same batch.
             path_obj = Path(file_ctx.source_path)
             parent = str(path_obj.parent).replace("\\", "/")
             if parent == "." or not parent:
@@ -114,9 +110,7 @@ class IngestionPipeline:
             temp_dir = Path(temp_dir_context.name)
 
             try:
-                # ============================================================
                 # PHASE 1: Download, Convert/Extract, Read text, Classify ALL files
-                # ============================================================
                 all_processed_files: List[FileContext] = []
 
                 for file_ctx in all_files:
@@ -137,15 +131,11 @@ class IngestionPipeline:
                     f"Phase 1 completed: Extracted and classified {len(all_processed_files)} files"
                 )
 
-                # ============================================================
                 # PHASE 2: Upload ALL files
-                # Sort files so fetch_all_metadata=True catalogs are processed last
-                # ============================================================
                 fetch_all_catalog_ids = {
                     c.id for c in config.catalogs if c.fetch_all_metadata
                 }
 
-                # Sort: files with fetch_all_metadata=False first, then fetch_all_metadata=True
                 sorted_files = sorted(
                     all_processed_files,
                     key=lambda pf: pf.classified_catalog_id in fetch_all_catalog_ids,
@@ -157,7 +147,6 @@ class IngestionPipeline:
 
                 for pf in sorted_files:
                     try:
-                        # Before uploading fetch_all_metadata files, aggregate metadata from uploaded files
                         if pf.classified_catalog_id in fetch_all_catalog_ids:
                             self._aggregate_folder_metadata(folder_ctx, config.catalogs)
 
@@ -271,12 +260,10 @@ class IngestionPipeline:
             config: Job configuration
             folder_ctx: Parent folder context
         """
-        # Skip if already failed in phase 1
         if pf.status == FileStatus.FAILED:
             folder_ctx.add_file(pf)
             return
 
-        # Skip if not classified
         if pf.status != FileStatus.CLASSIFIED or not pf.classified_catalog_id:
             pf.status = FileStatus.FAILED
             pf.error_message = "File not classified"
@@ -317,12 +304,9 @@ class IngestionPipeline:
             for key, values in aggregated.items():
                 if key not in column_static_data or not column_static_data[key]:
                     if values and isinstance(values, list):
-                        # Find first non-empty value in list
                         non_empty_values = [v for v in values if v]
                         if non_empty_values:
                             column_static_data[key] = non_empty_values[0]
-
-            # 3. Update pf.metadata so the returned result reflects the aggregated data
             pf.metadata.update(column_static_data)
         else:
             column_static_data = pf.metadata.copy()
@@ -340,7 +324,6 @@ class IngestionPipeline:
 
         if isinstance(upload_result, dict):
             pf.asset_id = upload_result.get("asset_id")
-            # Update file metadata with extracted data from Datalog (post-upload processing)
             extracted_metadata = upload_result.get("extracted_metadata", {})
             if extracted_metadata:
                 if isinstance(extracted_metadata, dict):

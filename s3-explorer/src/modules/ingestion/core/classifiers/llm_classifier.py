@@ -150,7 +150,6 @@ class LLMClassifier(Classifier):
                     file_content=file_content,
                 )
 
-            # Extract separate fields from prediction
             category_id = getattr(prediction, "category_id", None)
             confidence = getattr(prediction, "confidence", None)
             reason = getattr(prediction, "reason", None)
@@ -182,7 +181,6 @@ class LLMClassifier(Classifier):
                     metadata=catalog.metadata_scan,
                 )
 
-            # Extract separate fields from prediction
             extracted_metadata = getattr(result, "extracted_metadata", {})
 
             if isinstance(extracted_metadata, str):

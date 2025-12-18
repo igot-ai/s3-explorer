@@ -265,7 +265,6 @@ class DatalogService:
 
         try:
             resp = await self._get(url, extra_headers=extra_headers)
-            logger.info(f"Table {url} exists: {resp.status_code}")
             if resp.status_code == 200:
                 return True
             elif resp.status_code == 404:
