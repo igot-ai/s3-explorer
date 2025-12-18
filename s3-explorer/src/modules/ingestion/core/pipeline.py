@@ -72,13 +72,37 @@ class IngestionPipeline:
         logger.info(f"Starting ingestion pipeline for source: {config.source_path}")
         logger.info(f"Processing with {len(config.catalogs)} catalogs")
 
-        # Step 1: List all top-level folders
-        folders = self.source.list_folders(config.source_path)
-        logger.info(f"Found {len(folders)} folders to process")
+        # Phase 0: Discovery - collect all files to process
+        logger.info(f"Phase 0: Discovering files in {config.source_path}")
+        all_discovered_files = list(
+            self.source.walk_folder(config.source_path, recursive=config.recursive)
+        )
+        logger.info(f"Found {len(all_discovered_files)} total files to process")
 
-        for folder_path in folders:
+        # Group files by their parent directory to maintain folder-level batches
+        files_by_folder: dict[str, List[FileContext]] = {}
+        for file_ctx in all_discovered_files:
+            # Use the directory part of the source path as the folder identity
+            # This ensures test/file.txt and test/sub/file.txt are in different batches
+            # but test/sub/f1.txt and test/sub/f2.txt are in the same batch.
+            path_obj = Path(file_ctx.source_path)
+            parent = str(path_obj.parent).replace("\\", "/")
+            if parent == "." or not parent:
+                parent = config.source_path.rstrip("/") or "/"
+            if not parent.endswith("/"):
+                parent += "/"
+
+            if parent not in files_by_folder:
+                files_by_folder[parent] = []
+            files_by_folder[parent].append(file_ctx)
+
+        logger.info(f"Grouped into {len(files_by_folder)} folder-based batches")
+
+        for folder_path, all_files in files_by_folder.items():
             folder_ctx = FolderContext(folder_path=folder_path)
-            logger.info(f"Processing folder: {folder_path}")
+            logger.info(
+                f"Processing batch folder: {folder_path} ({len(all_files)} files)"
+            )
 
             # Create temp directory for the entire folder processing
             base_temp_dir = Path(config.temp_dir) if config.temp_dir else None
@@ -90,12 +114,6 @@ class IngestionPipeline:
             temp_dir = Path(temp_dir_context.name)
 
             try:
-                # Collect all files from folder
-                all_files = list(
-                    self.source.walk_folder(folder_path, recursive=config.recursive)
-                )
-                logger.info(f"Found {len(all_files)} files in folder {folder_path}")
-
                 # ============================================================
                 # PHASE 1: Download, Convert/Extract, Read text, Classify ALL files
                 # ============================================================
@@ -209,6 +227,7 @@ class IngestionPipeline:
 
         # Stage 1: Convert/Extract if needed
         processed_files = self.processor.process(file_ctx, temp_dir)
+        logger.debug(f"Processed files: {processed_files}")
 
         # Stage 2: Read document text for all processed files
         for pf in processed_files:

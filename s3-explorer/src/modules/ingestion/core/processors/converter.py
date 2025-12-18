@@ -62,6 +62,13 @@ class DocxToPdfConverter(FileProcessor):
         Returns:
             True if file is DOCX or DOC
         """
+        # Avoid re-processing files that are already PDF or already converted
+        if (
+            file_context.file_type == "pdf"
+            or file_context.status == FileStatus.CONVERTED
+        ):
+            return False
+
         return file_context.file_type in [
             "docx",
             "doc",
@@ -122,9 +129,11 @@ class DocxToPdfConverter(FileProcessor):
                 file_context.error_message = error_msg
                 return [file_context]
 
-            # Create new context for converted file
+            source_path = Path(file_context.source_path)
+            new_source_path = str(source_path.with_suffix(".pdf"))
+
             converted_context = FileContext(
-                source_path=file_context.source_path,
+                source_path=new_source_path,
                 local_path=str(output_path),
                 file_type="pdf",
                 status=FileStatus.CONVERTED,
@@ -202,7 +211,16 @@ class PypandocConverter(FileProcessor):
         Returns:
             True if file is DOCX and pypandoc is available
         """
-        return self.available and (
+        if not self.available:
+            return False
+
+        if (
+            file_context.file_type == "pdf"
+            or file_context.status == FileStatus.CONVERTED
+        ):
+            return False
+
+        return (
             file_context.file_type == "docx"
             or file_context.source_path.lower().endswith(".docx")
         )
@@ -240,8 +258,11 @@ class PypandocConverter(FileProcessor):
                 extra_args=["--pdf-engine=xelatex"],
             )
 
+            source_path = Path(file_context.source_path)
+            new_source_path = str(source_path.with_suffix(".pdf"))
+
             converted_context = FileContext(
-                source_path=file_context.source_path,
+                source_path=new_source_path,
                 local_path=str(output_path),
                 file_type="pdf",
                 status=FileStatus.CONVERTED,

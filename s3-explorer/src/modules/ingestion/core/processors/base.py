@@ -66,7 +66,7 @@ class FileProcessorChain:
         self.processors = processors
 
     def process(self, file_context: FileContext, output_dir: Path) -> List[FileContext]:
-        """Route file to appropriate processor.
+        """Route file to appropriate processor recursively.
 
         Args:
             file_context: File to process
@@ -83,15 +83,39 @@ class FileProcessorChain:
                 )
                 file_context.status = FileStatus.PROCESSING
                 try:
-                    return processor.process(file_context, output_dir)
+                    # Execute current processor
+                    processed_items = processor.process(file_context, output_dir)
+
+                    # Recursively process resulting items
+                    final_results = []
+                    for item in processed_items:
+                        if item.status == FileStatus.FAILED:
+                            final_results.append(item)
+                            continue
+
+                        if (
+                            item.local_path == file_context.local_path
+                            and item.status == file_context.status
+                        ):
+                            final_results.append(item)
+                        else:
+                            next_output_dir = (
+                                Path(item.local_path).parent
+                                if item.local_path
+                                else output_dir
+                            )
+                            final_results.extend(self.process(item, next_output_dir))
+
+                    return final_results
+
                 except Exception as e:
-                    logger.error(f"Error processing file: {str(e)}")
+                    logger.error(
+                        f"Error processing file {file_context.source_path}: {str(e)}"
+                    )
                     file_context.status = FileStatus.FAILED
                     file_context.error_message = str(e)
                     return [file_context]
 
-        # No processor found, return original (likely already PDF)
-        logger.debug(f"No processor needed for {file_context.source_path}")
         return [file_context]
 
     def add_processor(self, processor: FileProcessor) -> None:

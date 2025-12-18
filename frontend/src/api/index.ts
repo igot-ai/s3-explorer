@@ -211,7 +211,6 @@ export function buildIngestionRequest(routine: Routine): IngestionRequest {
 
   // Find collection nodes and build catalogs
   const collectionNodes = routine.nodes.filter((n) => n.type === 'collection');
-  console.log("collectionNodes", collectionNodes);
   const catalogs = collectionNodes.map((node) => {
     const data = node.data as CollectionData;
     // Support legacy 'information' field for backwards compatibility with old saved routines

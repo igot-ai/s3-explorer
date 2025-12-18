@@ -163,9 +163,24 @@ class ArchiveExtractor(FileProcessor):
             )
 
             # Collect all extracted files
+            import unicodedata
+
             extracted_files = []
             for file_path in extract_dir.rglob("*"):
                 if file_path.is_file():
+                    # Normalize filename to NFC (fixes Vietnamese NFD issues)
+                    name = file_path.name
+                    normalized_name = unicodedata.normalize("NFC", name)
+                    if name != normalized_name:
+                        new_path = file_path.with_name(normalized_name)
+                        try:
+                            file_path.rename(new_path)
+                            file_path = new_path
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to rename {name} to {normalized_name}: {e}"
+                            )
+
                     # Create FileContext for each extracted file
                     relative_path = file_path.relative_to(extract_dir)
                     file_type = file_path.suffix.lower().lstrip(".")
@@ -268,9 +283,24 @@ class SimpleZipExtractor(FileProcessor):
                 zip_ref.extractall(extract_dir)
 
             # Collect all extracted files
+            import unicodedata
+
             extracted_files = []
             for file_path in extract_dir.rglob("*"):
                 if file_path.is_file():
+                    # Normalize filename to NFC (fixes Vietnamese NFD issues)
+                    name = file_path.name
+                    normalized_name = unicodedata.normalize("NFC", name)
+                    if name != normalized_name:
+                        new_path = file_path.with_name(normalized_name)
+                        try:
+                            file_path.rename(new_path)
+                            file_path = new_path
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to rename {name} to {normalized_name}: {e}"
+                            )
+
                     relative_path = file_path.relative_to(extract_dir)
                     file_type = file_path.suffix.lower().lstrip(".")
 
