@@ -1,12 +1,12 @@
 /**
  * API Layer - Integrated with backend APIs
- * 
+ *
  * Configuration loaded from environment variables (.env file)
  */
 
-import type { 
-  Routine, 
-  Project, 
+import type {
+  Routine,
+  Project,
   IngestionRequest,
   IngestionResponse,
   S3ConnectorData,
@@ -21,9 +21,6 @@ const INGESTION_API_URL = import.meta.env.VITE_INGESTION_API_URL;
 const AUTH_TOKEN = import.meta.env.VITE_AUTH_TOKEN;
 const WORKSPACE_ID = import.meta.env.VITE_WORKSPACE_ID;
 
-// Ingestion API Bearer Token from environment
-const INGESTION_API_TOKEN = import.meta.env.VITE_INGESTION_API_TOKEN;
-
 // Helper to make authenticated requests
 async function catalogFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${CATALOG_API_URL}${endpoint}`, {
@@ -34,12 +31,12 @@ async function catalogFetch<T>(endpoint: string, options?: RequestInit): Promise
       ...options?.headers,
     },
   });
-  
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Request failed' }));
     throw new Error(error.message || `API error: ${response.status}`);
   }
-  
+
   return response.json();
 }
 
@@ -82,11 +79,11 @@ export async function fetchProjects(): Promise<Project[]> {
       q: '',
       sort_by: 'name asc',
     });
-    
+
     const data = await catalogFetch<CatalogProject[]>(
       `/catalog/projects?${params.toString()}`
     );
-    
+
     return data.map((p) => ({
       id: p.id,
       name: p.name,
@@ -106,7 +103,7 @@ export async function fetchCollections(projectId: string): Promise<CatalogCollec
     const data = await catalogFetch<CatalogCollection[]>(
       `/catalog/projects/${projectId}/tables?limit=200`
     );
-    
+
     return data;
   } catch (error) {
     console.error('Failed to fetch collections:', error);
@@ -162,12 +159,12 @@ export function buildIngestionRequest(routine: Routine): IngestionRequest {
   if (!s3Node) {
     throw new Error('No S3 Connector found in routine');
   }
-  
+
   const s3Data = s3Node.data as S3ConnectorData;
-  
+
   // Build storage credentials based on provider type
   const storageCredentials: IngestionRequest['config']['storage_credentials'] = {};
-  
+
   switch (s3Data.providerType) {
     case 'aws':
     case 'wasabi':
@@ -196,7 +193,7 @@ export function buildIngestionRequest(routine: Routine): IngestionRequest {
       storageCredentials.credentials_json = s3Data.credentialsJson;
       break;
   }
-  
+
   // Find collection nodes and build catalogs
   const collectionNodes = routine.nodes.filter((n) => n.type === 'collection');
   const catalogs = collectionNodes.map((node) => {
@@ -209,11 +206,11 @@ export function buildIngestionRequest(routine: Routine): IngestionRequest {
       fetch_all_metadata: data.fetchAllMetadata || false,
     };
   });
-  
+
   if (catalogs.length === 0) {
     throw new Error('No Collection nodes found in routine');
   }
-  
+
   return {
     config: {
       source_path: s3Data.prefix || '/',  // Default to root if no prefix specified
@@ -234,22 +231,21 @@ export function buildIngestionRequest(routine: Routine): IngestionRequest {
  */
 export async function runIngestionPipeline(request: IngestionRequest): Promise<IngestionResponse> {
   console.log('Running ingestion pipeline with request:', request);
-  
+
   const response = await fetch(`${INGESTION_API_URL}/run`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${INGESTION_API_TOKEN}`,
     },
     body: JSON.stringify(request),
   });
-  
+
   const data = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(data.message || data.errors?.join(', ') || 'Pipeline execution failed');
   }
-  
+
   return data as IngestionResponse;
 }
 
@@ -258,11 +254,7 @@ export async function runIngestionPipeline(request: IngestionRequest): Promise<I
  */
 export async function checkIngestionHealth(): Promise<boolean> {
   try {
-    const response = await fetch(`${INGESTION_API_URL}/health`, {
-      headers: {
-        'Authorization': `Bearer ${INGESTION_API_TOKEN}`,
-      },
-    });
+    const response = await fetch(`${INGESTION_API_URL}/health`);
     return response.ok;
   } catch {
     return false;
@@ -278,7 +270,7 @@ export async function listS3Prefixes(
 ): Promise<string[]> {
   // Build storage credentials based on provider type
   const storageCredentials: Record<string, string> = {};
-  
+
   switch (s3Data.providerType) {
     case 'aws':
     case 'wasabi':
@@ -306,12 +298,11 @@ export async function listS3Prefixes(
       if (s3Data.credentialsJson) storageCredentials.credentials_json = s3Data.credentialsJson;
       break;
   }
-  
+
   const response = await fetch(`${INGESTION_API_URL}/list-prefixes`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${INGESTION_API_TOKEN}`,
     },
     body: JSON.stringify({
       storage_provider: s3Data.providerType,
@@ -319,13 +310,13 @@ export async function listS3Prefixes(
       prefix: prefix,
     }),
   });
-  
+
   const data = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(data.message || data.errors?.join(', ') || 'Failed to list prefixes');
   }
-  
+
   return data.prefixes || [];
 }
 
