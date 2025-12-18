@@ -211,7 +211,7 @@ class WasabiProvider(S3CompatibleProvider):
         fs = s3fs.S3FileSystem(
             key=access_key,
             secret=secret_key,
-            client_kwargs={"endpoint_url": endpoint_url},
+            endpoint_url=endpoint_url,
         )
 
         # Initialize base class with configured filesystem
@@ -354,8 +354,8 @@ class DigitalOceanSpacesProvider(S3CompatibleProvider):
             fs = s3fs.S3FileSystem(
                 key=access_key,
                 secret=secret_key,
+                endpoint_url=endpoint_url,
                 client_kwargs={
-                    "endpoint_url": endpoint_url,
                     "config": boto3.session.Config(
                         signature_version="s3v4", s3={"addressing_style": "virtual"}
                     ),
@@ -407,7 +407,8 @@ class CloudflareR2Provider(S3CompatibleProvider):
         fs = s3fs.S3FileSystem(
             key=access_key,
             secret=secret_key,
-            client_kwargs={"endpoint_url": endpoint_url, "region_name": "auto"},
+            endpoint_url=endpoint_url,
+            client_kwargs={"region_name": "auto"},
         )
 
         # Initialize base class with configured filesystem
@@ -447,8 +448,8 @@ class HetznerStorageProvider(S3CompatibleProvider):
             fs = s3fs.S3FileSystem(
                 key=access_key,
                 secret=secret_key,
+                endpoint_url=endpoint_url,
                 client_kwargs={
-                    "endpoint_url": endpoint_url,
                     "region_name": region,
                     "config": boto3.session.Config(
                         signature_version="s3v4", s3={"addressing_style": "path"}
