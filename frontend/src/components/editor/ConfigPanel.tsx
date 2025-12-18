@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useRoutineStore } from '@/store';
-import { fetchCollections } from '@/api';
+import { fetchCollections, fetchColumns } from '@/api';
 import type { Node, S3ConnectorData, CollectionData, StorageProviderType } from '@/types';
 import { AWS_REGIONS, WASABI_REGIONS, DIGITALOCEAN_REGIONS, HETZNER_REGIONS } from '@/types';
 import { PrefixCombobox } from './PrefixCombobox';
@@ -291,6 +291,8 @@ export function ConfigPanel() {
   const { currentRoutine, selectedNodeId, setSelectedNodeId, updateNode } = useRoutineStore();
   const [collections, setCollections] = useState<CatalogCollection[]>([]);
   const [loadingCollections, setLoadingCollections] = useState(false);
+  const [columns, setColumns] = useState<any[]>([]);
+  const [loadingColumns, setLoadingColumns] = useState(false);
 
   const node = currentRoutine?.nodes.find((n) => n.id === selectedNodeId);
 
@@ -307,6 +309,39 @@ export function ConfigPanel() {
     }
   }, [currentRoutine?.projectId]);
 
+  // Fetch columns when catalog ID changes
+  useEffect(() => {
+    const catalogId = node?.data.type === 'collection'
+      ? (node.data as CollectionData).catalogId
+      : null;
+
+    if (catalogId) {
+      setLoadingColumns(true);
+      fetchColumns(catalogId)
+        .then((cols) => {
+          setColumns(cols);
+
+          // Automatically update metadataScan in node data
+          const scan = cols
+            .filter((col) => col.data_type === 'static' && col.prompt_template)
+            .reduce((acc, col) => {
+              acc[col.name] = col.prompt_template;
+              return acc;
+            }, {} as Record<string, string>);
+
+          updateNodeData({ metadataScan: scan });
+        })
+        .catch((err) => {
+          console.error('Failed to fetch columns:', err);
+          setColumns([]);
+        })
+        .finally(() => setLoadingColumns(false));
+    } else {
+      setColumns([]);
+      updateNodeData({ metadataScan: undefined });
+    }
+  }, [node?.id, (node?.data as any)?.catalogId]);
+
   if (!node) return null;
 
   const updateNodeData = (updates: Partial<Node['data']>) => {
@@ -318,7 +353,7 @@ export function ConfigPanel() {
   // Get other collection nodes that can be used as metadata source
   const getOtherCollectionNodes = () => {
     if (!currentRoutine || node.data.type !== 'collection') return [];
-    
+
     return currentRoutine.nodes.filter(
       (n) => n.data.type === 'collection' && n.id !== node.id
     );
@@ -327,7 +362,7 @@ export function ConfigPanel() {
   // Get catalog IDs already used by OTHER collection nodes
   const getUsedCatalogIds = (): Set<string> => {
     if (!currentRoutine) return new Set();
-    
+
     const usedIds = new Set<string>();
     currentRoutine.nodes.forEach((n) => {
       if (n.data.type === 'collection' && n.id !== node.id) {
@@ -341,12 +376,12 @@ export function ConfigPanel() {
   };
 
   const usedCatalogIds = getUsedCatalogIds();
-  
+
   // Filter available collections (exclude already used ones, keep current selection)
-  const currentCatalogId = node.data.type === 'collection' 
-    ? (node.data as CollectionData).catalogId 
+  const currentCatalogId = node.data.type === 'collection'
+    ? (node.data as CollectionData).catalogId
     : '';
-  
+
   const availableCollections = collections.filter(
     (col) => !usedCatalogIds.has(col.id) || col.id === currentCatalogId
   );
@@ -385,9 +420,9 @@ export function ConfigPanel() {
 
         {/* S3 Connector fields */}
         {node.data.type === 's3-connector' && (
-          <S3ConnectorFields 
-            data={node.data as S3ConnectorData} 
-            updateNodeData={updateNodeData} 
+          <S3ConnectorFields
+            data={node.data as S3ConnectorData}
+            updateNodeData={updateNodeData}
           />
         )}
 
@@ -421,6 +456,36 @@ export function ConfigPanel() {
               </p>
             </div>
 
+            {/* Display Static Columns (Metadata Scans) */}
+            {columns.length > 0 && (
+              <div className="space-y-2 p-3 bg-gray-50 rounded-md border border-gray-100">
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Static Columns (Extracted Metadata)
+                </label>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {columns
+                    .filter((col) => col.data_type === 'static' && col.prompt_template)
+                    .map((col) => (
+                      <div key={col.id} className="text-xs">
+                        <div className="font-medium text-gray-700">{col.name}</div>
+                        <div className="text-gray-500 italic truncate" title={col.prompt_template}>
+                          {col.prompt_template}
+                        </div>
+                      </div>
+                    ))}
+                  {columns.filter((col) => col.data_type === 'static' && col.prompt_template).length === 0 && (
+                    <p className="text-xs text-gray-400 italic">No static columns found for this collection.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {loadingColumns && (
+              <div className="text-center py-2">
+                <p className="text-xs text-gray-400 animate-pulse">Loading column metadata...</p>
+              </div>
+            )}
+
             {/* AI Classification Instructions */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Classification Instructions</label>
@@ -447,21 +512,19 @@ export function ConfigPanel() {
                 type="button"
                 role="switch"
                 aria-checked={(node.data as CollectionData).fetchAllMetadata || false}
-                onClick={() => updateNodeData({ 
-                  fetchAllMetadata: !(node.data as CollectionData).fetchAllMetadata 
+                onClick={() => updateNodeData({
+                  fetchAllMetadata: !(node.data as CollectionData).fetchAllMetadata
                 })}
-                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                  (node.data as CollectionData).fetchAllMetadata 
-                    ? 'bg-blue-600' 
-                    : 'bg-gray-200'
-                }`}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${(node.data as CollectionData).fetchAllMetadata
+                  ? 'bg-blue-600'
+                  : 'bg-gray-200'
+                  }`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    (node.data as CollectionData).fetchAllMetadata 
-                      ? 'translate-x-5' 
-                      : 'translate-x-0'
-                  }`}
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${(node.data as CollectionData).fetchAllMetadata
+                    ? 'translate-x-5'
+                    : 'translate-x-0'
+                    }`}
                 />
               </button>
             </div>
@@ -471,7 +534,7 @@ export function ConfigPanel() {
               <label className="text-sm font-medium">Metadata Source Collection</label>
               <Select
                 value={(node.data as CollectionData).metadataSourceCollectionId || 'none'}
-                onValueChange={(value) => 
+                onValueChange={(value) =>
                   updateNodeData({ metadataSourceCollectionId: value === 'none' ? '' : value })
                 }
               >

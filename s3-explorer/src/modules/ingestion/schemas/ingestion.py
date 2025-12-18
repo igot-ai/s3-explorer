@@ -18,6 +18,12 @@ class CatalogSchema(Schema):
             "description": "If True, aggregate metadata from all catalogs for the folder"
         },
     )
+    metadata_scan = fields.Dict(
+        keys=fields.Str(),
+        values=fields.Raw(),
+        load_default=dict,
+        metadata={"description": "Static metadata prompts for extraction"},
+    )
 
 
 class StorageCredentialsSchema(Schema):

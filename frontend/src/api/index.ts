@@ -81,7 +81,7 @@ export async function fetchProjects(): Promise<Project[]> {
     });
 
     const data = await catalogFetch<CatalogProject[]>(
-      `/catalog/projects?${params.toString()}`
+      `/projects?${params.toString()}`
     );
 
     return data.map((p) => ({
@@ -101,12 +101,27 @@ export async function fetchProjects(): Promise<Project[]> {
 export async function fetchCollections(projectId: string): Promise<CatalogCollection[]> {
   try {
     const data = await catalogFetch<CatalogCollection[]>(
-      `/catalog/projects/${projectId}/tables?limit=200`
+      `/projects/${projectId}/tables?limit=200`
     );
 
     return data;
   } catch (error) {
     console.error('Failed to fetch collections:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch columns for a table (catalog)
+ */
+export async function fetchColumns(catalogId: string): Promise<any[]> {
+  try {
+    const data = await catalogFetch<any[]>(
+      `/tables/${catalogId}/columns?limit=200`
+    );
+    return data;
+  } catch (error) {
+    console.error('Failed to fetch columns:', error);
     throw error;
   }
 }
@@ -196,6 +211,7 @@ export function buildIngestionRequest(routine: Routine): IngestionRequest {
 
   // Find collection nodes and build catalogs
   const collectionNodes = routine.nodes.filter((n) => n.type === 'collection');
+  console.log("collectionNodes", collectionNodes);
   const catalogs = collectionNodes.map((node) => {
     const data = node.data as CollectionData;
     // Support legacy 'information' field for backwards compatibility with old saved routines
@@ -204,6 +220,7 @@ export function buildIngestionRequest(routine: Routine): IngestionRequest {
       id: data.catalogId || node.id, // Use catalogId if set, otherwise use node ID
       instruction: data.instruction || legacyInfo || `Documents for ${data.collectionName || data.name}`,
       fetch_all_metadata: data.fetchAllMetadata || false,
+      metadata_scan: data.metadataScan,
     };
   });
 
@@ -221,6 +238,7 @@ export function buildIngestionRequest(routine: Routine): IngestionRequest {
       workspace_id: WORKSPACE_ID,
       project_id: routine.projectId,
       auth_token: AUTH_TOKEN,
+      api_base_url: CATALOG_API_URL, // Ensure backend knows the catalog API URL
     },
     catalogs,
   };
@@ -230,8 +248,6 @@ export function buildIngestionRequest(routine: Routine): IngestionRequest {
  * Run the ingestion pipeline
  */
 export async function runIngestionPipeline(request: IngestionRequest): Promise<IngestionResponse> {
-  console.log('Running ingestion pipeline with request:', request);
-
   const response = await fetch(`${INGESTION_API_URL}/run`, {
     method: 'POST',
     headers: {

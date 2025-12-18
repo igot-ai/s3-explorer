@@ -65,6 +65,3 @@ SUPPORTED_SPREADSHEET_EXTENSIONS = [
 
 # Max workers for extracting text from files
 MAX_WORKERS = 4
-
-# Data transformation constants
-CODE_EXECUTION_MAX_REPAIR_ATTEMPTS = 3

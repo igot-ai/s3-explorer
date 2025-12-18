@@ -217,7 +217,6 @@ class DataCollectionAPIHandler(APICollectionHandler):
             table_id = catalog.id
             source_id = file_context.source_path
             column_static_data = metadata.get("folder_metadata", {})
-            project_id = self.project_id
 
             result = self._run_async(
                 lambda svc: svc.upload_asset(
@@ -248,54 +247,12 @@ class DataCollectionAPIHandler(APICollectionHandler):
                             return item.get("asset_id") or item.get("id")
                     return None
 
-                asset_id = _pick_asset(uploaded_files)
+                return True if _pick_asset(uploaded_files) is not None else False
 
-                self._run_async(
-                    lambda svc: svc.trigger_transformation(
-                        project_id=project_id,
-                        table_id=table_id,
-                        asset_ids=[asset_id],
-                    )
-                )
-
-                is_scanned = self._run_async(
-                    lambda svc: svc.poll_data_status(
-                        table_id=table_id,
-                        asset_id=asset_id,
-                        interval_seconds=10.0,
-                        max_attempts=60,  # Wait up to 10 minutes per asset
-                    )
-                )
-
-                extracted_metadata = (
-                    self._run_async(
-                        lambda svc: svc.poll_data_assets(
-                            table_id=table_id,
-                            asset_id=asset_id,
-                            interval_seconds=10.0,
-                            max_attempts=60,  # Wait up to 10 minutes per asset
-                        )
-                    )
-                    if is_scanned
-                    else None
-                )
-
-                # Return both asset_id and extracted metadata
-                return {
-                    "asset_id": asset_id,
-                    "extracted_metadata": extracted_metadata or {},
-                }
-
-            if not asset_id:
-                raise ValueError(
-                    f"Upload response missing asset_id (response keys: {list(result.keys())})"
-                )
-
-            return []
-
+            return False
         except Exception as e:
             logger.error(f"Error uploading to Datalog: {str(e)}")
-            raise
+            return False
 
     def upload_with_folder_context(
         self,

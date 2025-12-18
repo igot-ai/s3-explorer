@@ -34,6 +34,7 @@ class Catalog:
     id: str
     instruction: str
     fetch_all_metadata: bool = False
+    metadata_scan: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         """Validate catalog configuration."""
@@ -48,6 +49,7 @@ class Catalog:
             "id": self.id,
             "instruction": self.instruction,
             "fetch_all_metadata": self.fetch_all_metadata,
+            "metadata_scan": self.metadata_scan,
         }
 
 

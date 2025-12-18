@@ -143,7 +143,7 @@ class IngestionPipeline:
                         if pf.classified_catalog_id in fetch_all_catalog_ids:
                             self._aggregate_folder_metadata(folder_ctx, config.catalogs)
 
-                        self._extract_data(pf, config, folder_ctx)
+                        self._extract_and_upload(pf, config, folder_ctx)
                     except Exception as e:
                         logger.error(f"Error in phase 2 for {pf.source_path}: {str(e)}")
                         pf.status = FileStatus.FAILED
@@ -242,10 +242,10 @@ class IngestionPipeline:
 
         return processed_files
 
-    def _extract_data(
+    def _extract_and_upload(
         self, pf: FileContext, config: IngestionJobConfig, folder_ctx: FolderContext
     ) -> None:
-        """Phase 2: Upload file to collection.
+        """Phase 2: Extract metadata and upload file to collection.
 
         Args:
             pf: Processed file context with classification result
@@ -264,42 +264,82 @@ class IngestionPipeline:
             folder_ctx.add_file(pf)
             return
 
-        logger.debug(f"Phase 2: Uploading: {pf.source_path}")
-
-        # Upload to collection
         catalog = config.get_catalog_by_id(pf.classified_catalog_id)
-        if catalog:
-            with open(pf.local_path, "rb") as f:
-                if catalog.fetch_all_metadata:
-                    upload_result = self.handler.upload_with_folder_context(
-                        pf, catalog, f, pf.metadata, folder_ctx
-                    )
-                else:
-                    upload_result = self.handler.upload(pf, catalog, f, pf.metadata)
-
-            # Handle both old string format and new dict format
-            if isinstance(upload_result, dict):
-                pf.asset_id = upload_result.get("asset_id")
-                # Update file metadata with extracted data from Datalog
-                extracted_metadata = upload_result.get("extracted_metadata", {})
-                if extracted_metadata:
-                    pf.metadata.update(extracted_metadata)
-                    logger.debug(
-                        f"Updated metadata for {pf.source_path} with extracted data: {list(extracted_metadata.keys())}"
-                    )
-            else:
-                # Legacy format: upload_result is just asset_id string
-                pf.asset_id = upload_result
-
-            pf.status = FileStatus.UPLOADED
-            logger.info(
-                f"Successfully uploaded {pf.source_path} to collection {catalog.id}, asset_id: {pf.asset_id}"
-            )
-        else:
+        if not catalog:
             logger.warning(f"Catalog {pf.classified_catalog_id} not found")
             pf.status = FileStatus.FAILED
             pf.error_message = f"Catalog {pf.classified_catalog_id} not found"
+            folder_ctx.add_file(pf)
+            return
 
+        logger.debug(f"Phase 2: Extracting metadata and uploading: {pf.source_path}")
+
+        if pf.extracted_text:
+            extracted_llm_metadata = self.classifier.extract_metadata(
+                pf.extracted_text, catalog
+            )
+            if extracted_llm_metadata:
+                if isinstance(extracted_llm_metadata, dict):
+                    pf.metadata.update(extracted_llm_metadata)
+                else:
+                    logger.warning(
+                        f"Extracted metadata is not a dictionary: {type(extracted_llm_metadata)}"
+                    )
+                logger.debug(f"Extracted metadata via LLM for {pf.source_path}")
+
+        column_static_data = {}
+        if catalog.fetch_all_metadata:
+            aggregated = folder_ctx.aggregated_metadata.get(catalog.id, {})
+
+            for key, value in pf.metadata.items():
+                if value:
+                    column_static_data[key] = value
+
+            for key, values in aggregated.items():
+                if key not in column_static_data or not column_static_data[key]:
+                    if values and isinstance(values, list):
+                        # Find first non-empty value in list
+                        non_empty_values = [v for v in values if v]
+                        if non_empty_values:
+                            column_static_data[key] = non_empty_values[0]
+
+            # 3. Update pf.metadata so the returned result reflects the aggregated data
+            pf.metadata.update(column_static_data)
+        else:
+            column_static_data = pf.metadata.copy()
+
+        metadata_to_send = pf.metadata.copy()
+        metadata_to_send["folder_metadata"] = column_static_data
+
+        with open(pf.local_path, "rb") as f:
+            if catalog.fetch_all_metadata:
+                upload_result = self.handler.upload_with_folder_context(
+                    pf, catalog, f, metadata_to_send, folder_ctx
+                )
+            else:
+                upload_result = self.handler.upload(pf, catalog, f, metadata_to_send)
+
+        if isinstance(upload_result, dict):
+            pf.asset_id = upload_result.get("asset_id")
+            # Update file metadata with extracted data from Datalog (post-upload processing)
+            extracted_metadata = upload_result.get("extracted_metadata", {})
+            if extracted_metadata:
+                if isinstance(extracted_metadata, dict):
+                    pf.metadata.update(extracted_metadata)
+                else:
+                    logger.warning(
+                        f"API extracted metadata is not a dictionary: {type(extracted_metadata)}"
+                    )
+                logger.debug(
+                    f"Updated metadata for {pf.source_path} with Datalog extracted data"
+                )
+        else:
+            pf.asset_id = upload_result
+
+        pf.status = FileStatus.UPLOADED
+        logger.info(
+            f"Successfully uploaded {pf.source_path} to collection {catalog.id}, asset_id: {pf.asset_id}"
+        )
         folder_ctx.add_file(pf)
 
     def _aggregate_folder_metadata(
@@ -327,10 +367,11 @@ class IngestionPipeline:
                 aggregated = {}
                 for file_ctx in all_successful_files:
                     for key, value in file_ctx.metadata.items():
-                        if key not in aggregated:
-                            aggregated[key] = []
-                        if value not in aggregated[key]:
-                            aggregated[key].append(value)
+                        if value:  # Only aggregate non-empty values
+                            if key not in aggregated:
+                                aggregated[key] = []
+                            if value not in aggregated[key]:
+                                aggregated[key].append(value)
 
                 folder_ctx.aggregated_metadata[catalog.id] = aggregated
                 logger.debug(
