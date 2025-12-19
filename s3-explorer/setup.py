@@ -62,5 +62,6 @@ setup(
         "markitdown>=0.1.4",
         "marshmallow>=4.1.1",
         "loguru>=0.7.3",
+        "patool>=4.0.3",
     ],
 )

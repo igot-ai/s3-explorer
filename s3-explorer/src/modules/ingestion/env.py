@@ -29,7 +29,7 @@ def _find_env_file() -> Path:
 
 
 DOT_ENV_FILE_PATH = _find_env_file()
-load_dotenv(DOT_ENV_FILE_PATH, override=True)
+load_dotenv(DOT_ENV_FILE_PATH, override=False)
 
 # LLM
 LLM_PROVIDER = _load_env("LLM_PROVIDER")
@@ -42,5 +42,5 @@ LLM_TEMPERATURE = float(_load_optional_env("LLM_TEMPERATURE", "0.3"))
 
 # Config
 READER_TYPE = _load_optional_env("READER_TYPE", "markitdown")
-TEMP_DIR = _load_optional_env("TEMP_DIR", "./tmp/ingestion")
+TEMP_DIR = _load_optional_env("TEMP_DIR", "tmp")
 API_BASE_URL = _load_optional_env("API_BASE_URL", "http://localhost:8000/v1/catalog")
