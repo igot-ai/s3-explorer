@@ -95,7 +95,7 @@ def run_ingestion(
             pages_to_read=config.pages_to_read,
             reader_type=config.reader_type or "pymupdf",
             temp_dir=config.temp_dir,
-            api_base_url=config.api_base_url or os.getenv("INGESTION_API_BASE_URL"),
+            api_base_url=config.api_base_url or os.getenv("API_BASE_URL"),
             user_id=config.user_id,
         )
         

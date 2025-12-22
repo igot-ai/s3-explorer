@@ -72,7 +72,7 @@ def _create_pipeline(params: IngestionJobParams) -> IngestionPipeline:
     classifier = ClassifierManager.get_instance().classifier
 
     collection_handler = DataCollectionAPIHandler(
-        base_url=params.api_base_url or os.getenv("INGESTION_API_BASE_URL"),
+        base_url=params.api_base_url or os.getenv("API_BASE_URL"),
         workspace_id=params.workspace_id,
         project_id=params.project_id,
         auth_token=params.auth_token,
