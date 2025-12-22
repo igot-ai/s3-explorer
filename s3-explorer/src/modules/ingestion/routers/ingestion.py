@@ -87,7 +87,7 @@ def create_pipeline_from_request(
         document_reader = PyMuPDFReader()
     else:
         document_reader = MarkitdownReader()
-    # Use provided classifier, or from config, or default LLMClassifier
+
     classifier = ClassifierManager.get_instance().classifier
 
     # Create collection handler
