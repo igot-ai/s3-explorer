@@ -97,8 +97,6 @@ class IngestionJobParams:
         temp_dir: Temporary directory for file processing
         api_base_url: Base URL for data collection API
         user_id: Optional user ID who initiated the job
-        callback_workflow: Optional workflow to trigger on completion
-        callback_params: Optional parameters for the callback workflow
     """
     source_path: str
     workspace_id: str
@@ -114,8 +112,6 @@ class IngestionJobParams:
     temp_dir: Optional[str] = None
     api_base_url: Optional[str] = None
     user_id: Optional[str] = None
-    callback_workflow: Optional[str] = None  # Workflow to trigger on completion
-    callback_params: Optional[Dict[str, Any]] = None  # Parameters for callback workflow
 
     def get_catalogs(self) -> List[CatalogParams]:
         """Convert catalog dictionaries to CatalogParams objects."""
@@ -138,8 +134,6 @@ class IngestionJobParams:
             "temp_dir": self.temp_dir,
             "api_base_url": self.api_base_url,
             "user_id": self.user_id,
-            "callback_workflow": self.callback_workflow,
-            "callback_params": self.callback_params,
         }
 
     @classmethod
@@ -160,43 +154,7 @@ class IngestionJobParams:
             temp_dir=data.get("temp_dir"),
             api_base_url=data.get("api_base_url"),
             user_id=data.get("user_id"),
-            callback_workflow=data.get("callback_workflow"),
-            callback_params=data.get("callback_params"),
         )
-
-
-@dataclass
-class FileResult:
-    """Result of processing a single file.
-    
-    Attributes:
-        source_path: Original source path
-        status: Processing status (uploaded, failed, etc.)
-        classified_catalog_id: ID of the catalog the file was classified to
-        error_message: Error message if failed
-        metadata: Extracted metadata
-    """
-    source_path: str
-    status: str
-    classified_catalog_id: Optional[str] = None
-    error_message: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class FolderResult:
-    """Result of processing a folder.
-    
-    Attributes:
-        folder_path: Path to the processed folder
-        successful_count: Number of successfully processed files
-        failed_count: Number of failed files
-        files: List of file results
-    """
-    folder_path: str
-    successful_count: int
-    failed_count: int
-    files: List[Dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass

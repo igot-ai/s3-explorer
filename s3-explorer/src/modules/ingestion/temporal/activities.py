@@ -6,25 +6,25 @@ the actual pipeline execution.
 """
 
 import logging
+import os
 import uuid
 from typing import Dict, Any
 
 from temporalio import activity
 
-from dataroutine.modules.ingestion.config.settings import IngestionConfig
-from dataroutine.modules.ingestion.core.classifiers import ClassifierManager
-from dataroutine.modules.ingestion.core.connectors import get_storage_provider
-from dataroutine.modules.ingestion.core.connectors.s3_connector import S3SourceConnector
-from dataroutine.modules.ingestion.core.handlers.api_handler import DataCollectionAPIHandler
-from dataroutine.modules.ingestion.core.models import Catalog, FileContext, FolderContext, IngestionJobConfig
-from dataroutine.modules.ingestion.core.pipeline import IngestionPipeline
-from dataroutine.modules.ingestion.core.processors.base import FileProcessorChain
-from dataroutine.modules.ingestion.core.processors.converter import DocxToPdfConverter
-from dataroutine.modules.ingestion.core.processors.extractor import ArchiveExtractor, SimpleZipExtractor
-from dataroutine.modules.ingestion.core.readers.markitdown_reader import MarkitdownReader
-from dataroutine.modules.ingestion.core.readers.pdfplumber_reader import PDFPlumberReader
-from dataroutine.modules.ingestion.core.readers.pymupdf_reader import PyMuPDFReader
-from dataroutine.modules.ingestion.temporal.models import IngestionJobParams, IngestionResult
+from src.modules.ingestion.core.classifiers import ClassifierManager
+from src.modules.ingestion.core.connectors import get_storage_provider
+from src.modules.ingestion.core.connectors.s3_connector import S3SourceConnector
+from src.modules.ingestion.core.handlers.api_handler import DataCollectionAPIHandler
+from src.modules.ingestion.core.models import Catalog, FileContext, FolderContext, IngestionJobConfig
+from src.modules.ingestion.core.pipeline import IngestionPipeline
+from src.modules.ingestion.core.processors.base import FileProcessorChain
+from src.modules.ingestion.core.processors.converter import DocxToPdfConverter
+from src.modules.ingestion.core.processors.extractor import ArchiveExtractor, SimpleZipExtractor
+from src.modules.ingestion.core.readers.markitdown_reader import MarkitdownReader
+from src.modules.ingestion.core.readers.pdfplumber_reader import PDFPlumberReader
+from src.modules.ingestion.core.readers.pymupdf_reader import PyMuPDFReader
+from src.modules.ingestion.temporal.models import IngestionJobParams, IngestionResult
 
 logger = logging.getLogger(__name__)
 
@@ -70,10 +70,9 @@ def _create_pipeline(params: IngestionJobParams) -> IngestionPipeline:
     else:
         document_reader = MarkitdownReader()
     classifier = ClassifierManager.get_instance().classifier
-    if not params.api_base_url:
-        raise ValueError("API base URL required for API handler")
+
     collection_handler = DataCollectionAPIHandler(
-        base_url=params.api_base_url,
+        base_url=params.api_base_url or os.getenv("INGESTION_API_BASE_URL"),
         workspace_id=params.workspace_id,
         project_id=params.project_id,
         auth_token=params.auth_token,
@@ -185,23 +184,3 @@ async def run_ingestion_pipeline_activity(params: IngestionJobParams) -> Dict[st
     except Exception as e:
         logger.error(f"❌ Pipeline activity failed: {e}", exc_info=True)
         return IngestionResult.failure(task_id, str(e)).to_dict()
-
-
-@activity.defn(name="notify_ingestion_complete_activity")
-async def notify_ingestion_complete_activity(result: Dict[str, Any], callback_params: Dict[str, Any]) -> bool:
-    """Notify external systems about ingestion completion.
-    
-    This activity can be used to trigger callbacks, send notifications,
-    or update external systems about the pipeline completion.
-    
-    Args:
-        result: IngestionResult as dictionary
-        callback_params: Parameters for the callback (e.g., webhook URL, message queue topic)
-        
-    Returns:
-        True if notification was successful
-    """
-    logger.info(f"📢 Notifying ingestion completion: task_id={result.get('task_id')}")
-    logger.info(f"   Callback params: {callback_params}")
-    return True  # Placeholder for actual notification logic
-

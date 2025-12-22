@@ -114,7 +114,7 @@ ingestion/
 │   ├── readers/        # Text extraction strategies
 │   ├── models.py       # Data models (FileContext, Catalog)
 │   └── pipeline.py     # Main orchestration logic
-├── routers/            # Flask API endpoints
+├── routers/            # FastAPI endpoints
 ├── schemas/            # Request/Response validation
 └── services/           # External service integrations (Datalog)
 ```

@@ -4,15 +4,15 @@ This module provides Temporal workflow orchestration for the data ingestion pipe
 enabling distributed execution and integration with other services like catalog.
 """
 
-from dataroutine.modules.ingestion.temporal.models import (
+from src.modules.ingestion.temporal.models import (
     IngestionJobParams,
     IngestionResult,
     CatalogParams,
 )
-from dataroutine.modules.ingestion.temporal.activities import (
+from src.modules.ingestion.temporal.activities import (
     run_ingestion_pipeline_activity,
 )
-from dataroutine.modules.ingestion.temporal.workflows import (
+from src.modules.ingestion.temporal.workflows import (
     IngestionPipelineWorkflow,
 )
 

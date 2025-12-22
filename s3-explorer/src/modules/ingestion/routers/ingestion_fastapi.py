@@ -1,16 +1,16 @@
 """FastAPI routes for ingestion pipeline."""
 
+import os
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from src.modules.ingestion.env import AUTH_TOKEN
 from src.modules.ingestion.schemas.fastapi_models import (
     IngestionRequestModel,
     IngestionResponseModel,
     ListPrefixesRequestModel,
     ListPrefixesResponseModel,
 )
-from src.modules.ingestion.wrapper import get_ingestion_wrapper
+from dataroutine.modules.ingestion.wrapper import get_ingestion_wrapper
 from src.modules.ingestion.core.connectors import get_storage_provider
 from src.modules.ingestion.core.connectors.s3_connector import S3SourceConnector
 from src.shared._logging import get_logger
@@ -36,50 +36,9 @@ def _normalize_token(value: Optional[str]) -> Optional[str]:
     return value
 
 
-async def verify_ingestion_auth(
-    authorization: Optional[str] = Header(None),
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-) -> None:
-    """Dependency to verify ingestion API authentication.
-    
-    Compares incoming token against env AUTH_TOKEN.
-    Accepts either:
-    - Authorization: Bearer <token> (or raw token)
-    - HTTPBearer token
-    """
-    # Get token from either source
-    provided_token = None
-    if authorization:
-        provided_token = _normalize_token(authorization)
-    elif credentials:
-        provided_token = credentials.credentials
-    
-    if not AUTH_TOKEN:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "success": False,
-                "message": "Server auth not configured",
-                "errors": ["AUTH_TOKEN is not set on server"],
-            }
-        )
-    
-    if provided_token != AUTH_TOKEN:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "success": False,
-                "message": "Unauthorized",
-                "errors": ["Invalid or missing auth token. Use AUTH_TOKEN or Authorization header."],
-            },
-            headers={"WWW-Authenticate": 'Bearer realm="ingestion"'},
-        )
-
-
 @router.post("/run", response_model=IngestionResponseModel)
-async def run_ingestion(
+def run_ingestion(
     request: IngestionRequestModel,
-    _: None = Depends(verify_ingestion_auth),
 ):
     """Run the ingestion pipeline by delegating to the Temporal wrapper via AgentService.
     
@@ -136,10 +95,8 @@ async def run_ingestion(
             pages_to_read=config.pages_to_read,
             reader_type=config.reader_type or "pymupdf",
             temp_dir=config.temp_dir,
-            api_base_url=config.api_base_url,
+            api_base_url=config.api_base_url or os.getenv("INGESTION_API_BASE_URL"),
             user_id=config.user_id,
-            callback_workflow=config.callback_workflow,
-            callback_params=config.callback_params,
         )
         
         return IngestionResponseModel(
@@ -181,9 +138,8 @@ async def health_check():
 
 
 @router.post("/list-prefixes", response_model=ListPrefixesResponseModel)
-async def list_prefixes(
+def list_prefixes(
     request: ListPrefixesRequestModel,
-    _: None = Depends(verify_ingestion_auth),
 ):
     """List available prefixes/folders in an S3 bucket.
     

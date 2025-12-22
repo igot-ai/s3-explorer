@@ -1,10 +1,8 @@
 # Temporal Workflow Integration for Ingestion Pipeline
 
-This module provides Temporal workflow orchestration for the data ingestion pipeline, enabling distributed execution and integration with other services like catalog without tight coupling.
+This module provides Temporal workflow orchestration for the data ingestion pipeline, enabling distributed execution and integration with other services.
 
 ## Architecture
-
-The Temporal wrapper follows a clean separation of concerns:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -25,7 +23,6 @@ The Temporal wrapper follows a clean separation of concerns:
 │ Temporal Workflow (IngestionPipelineWorkflow)               │
 │  - Orchestrates pipeline execution                          │
 │  - Handles retries and timeouts                             │
-│  - Optional callback workflow support                       │
 └──────────────────────┬──────────────────────────────────────┘
                        │
                        ▼
@@ -54,12 +51,10 @@ The Temporal wrapper follows a clean separation of concerns:
 ### Activities (`temporal/activities.py`)
 
 - **run_ingestion_pipeline_activity**: Main activity that executes the pipeline
-- **notify_ingestion_complete_activity**: Optional callback notification
 
 ### Workflows (`temporal/workflows.py`)
 
-- **IngestionPipelineWorkflow**: Main workflow for single ingestion jobs
-- **IngestionStatusWorkflow**: Parent workflow for coordinating multiple jobs
+- **IngestionPipelineWorkflow**: Main workflow for ingestion jobs
 
 ## Usage
 
@@ -87,8 +82,6 @@ response = run_ingestion_pipeline(
         "region": "us-east-1",
     },
     task_id="custom-task-id",  # Optional
-    callback_workflow="ProcessCatalogResults",  # Optional
-    callback_params={"project_id": "proj-456"},  # Optional
 )
 
 print(f"Task ID: {response.task_id}, Status: {response.status}")
@@ -127,10 +120,6 @@ The ingestion worker is registered in `consumer.py`:
 python consumer.py ingestion
 ```
 
-This starts a worker that processes:
-- `IngestionPipelineWorkflow` - Single job execution
-- `IngestionStatusWorkflow` - Multiple job coordination
-
 ## Task Queue
 
 The default task queue is defined in:
@@ -145,14 +134,6 @@ The wrapper ensures loose coupling:
 2. **Pipeline implementation** has no Temporal dependencies - can run standalone
 3. **Temporal wrapper** bridges the gap - converts params to pipeline config
 
-## Extensibility
-
-The wrapper can be extended outside dataroutine:
-
-1. **Custom workflows**: Import `IngestionPipelineWorkflow` and compose with other workflows
-2. **Custom activities**: Add new activities that use `IngestionJobParams`
-3. **Callback workflows**: Use `callback_workflow` and `callback_params` to chain workflows
-
 ## Testing
 
 Unit tests are provided in:
@@ -164,29 +145,4 @@ Run tests:
 pytest api/dataroutine/s3-explorer/src/modules/ingestion/tests/test_temporal_*.py
 ```
 
-## Integration with Catalog
-
-The catalog service can delegate to ingestion pipeline:
-
-```python
-# In catalog service
-from igotapi.client import run_ingestion_pipeline
-
-# Trigger ingestion when catalog is ready
-response = run_ingestion_pipeline(
-    source_path=f"s3://bucket/{catalog.source_path}",
-    workspace_id=catalog.workspace_id,
-    project_id=catalog.project_id,
-    auth_token=user_token,
-    catalogs=[{
-        "id": catalog.id,
-        "instruction": catalog.classification_instruction,
-        "fetch_all_metadata": catalog.fetch_all_metadata,
-    }],
-    callback_workflow="ProcessCatalogIngestionResults",
-    callback_params={"catalog_id": catalog.id},
-)
-```
-
-No tight coupling - catalog only needs to know about `run_ingestion_pipeline` function and its parameters.
 

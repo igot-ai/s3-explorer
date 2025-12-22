@@ -40,8 +40,6 @@ class IngestionConfigModel(BaseModel):
     auth_token: Optional[str] = Field(default=None, description="Auth token for API handler (required)")
     task_id: Optional[str] = Field(default=None, description="Optional task identifier")
     user_id: Optional[str] = Field(default=None, description="Optional user ID who initiated the job")
-    callback_workflow: Optional[str] = Field(default=None, description="Optional workflow to trigger on completion")
-    callback_params: Optional[Dict[str, Any]] = Field(default=None, description="Optional parameters for callback workflow")
     
     @field_validator("storage_credentials", mode="before")
     @classmethod

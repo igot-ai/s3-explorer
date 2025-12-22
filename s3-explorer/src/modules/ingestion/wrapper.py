@@ -79,8 +79,6 @@ class IngestionWrapper:
         temp_dir: Optional[str] = None,
         api_base_url: Optional[str] = None,
         user_id: Optional[str] = None,
-        callback_workflow: Optional[str] = None,
-        callback_params: Optional[Dict[str, Any]] = None,
     ) -> IngestionTaskResult:
         """Trigger an ingestion pipeline job.
         
@@ -102,8 +100,6 @@ class IngestionWrapper:
             temp_dir: Temporary directory for file processing
             api_base_url: Base URL for data collection API
             user_id: Optional user ID who initiated the job
-            callback_workflow: Optional workflow to trigger on completion
-            callback_params: Optional parameters for the callback workflow
             
         Returns:
             IngestionTaskResult with task_id, status, success, and optional error
@@ -126,8 +122,6 @@ class IngestionWrapper:
                 temp_dir=temp_dir,
                 api_base_url=api_base_url,
                 user_id=user_id,
-                callback_workflow=callback_workflow,
-                callback_params=callback_params,
             )
             
             return IngestionTaskResult(
@@ -179,6 +173,7 @@ def init_ingestion_wrapper(ingestion_client: "IngestionClientProtocol") -> None:
     
     logger.info("Initializing ingestion wrapper with client implementation")
     _wrapper_instance = IngestionWrapper(ingestion_client=ingestion_client)
+    logger.debug("Ingestion wrapper initialized successfully")
 
 
 def get_ingestion_wrapper() -> IngestionWrapper:
@@ -213,3 +208,90 @@ def reset_ingestion_wrapper() -> None:
     global _wrapper_instance
     logger.debug("Resetting ingestion wrapper singleton")
     _wrapper_instance = None
+
+
+# --- Temporal Client Function ---
+
+async def _run_ingestion_pipeline_async(
+    source_path: str,
+    workspace_id: str,
+    project_id: str,
+    auth_token: str,
+    catalogs: List[Dict[str, Any]],
+    task_id: Optional[str] = None,
+    storage_provider: str = "aws",
+    storage_credentials: Optional[Dict[str, Any]] = None,
+    recursive: bool = True,
+    pages_to_read: int = 3,
+    reader_type: str = "pymupdf",
+    temp_dir: Optional[str] = None,
+    api_base_url: Optional[str] = None,
+    user_id: Optional[str] = None,
+    **kwargs,
+) -> "IngestionTaskResult":
+    """Async function to trigger ingestion workflow via Temporal.
+    
+    This is the actual implementation that starts the Temporal workflow.
+    """
+    import uuid
+    from src.shared.temporal_client import get_temporal_client
+    from src.modules.ingestion.temporal.workflows import INGESTION_TASK_QUEUE
+    from src.modules.ingestion.temporal.models import IngestionJobParams
+    
+    task_id = task_id or str(uuid.uuid4())
+    
+    try:
+        client = await get_temporal_client()
+        
+        # Build params for the workflow
+        params = IngestionJobParams(
+            source_path=source_path,
+            workspace_id=workspace_id,
+            project_id=project_id,
+            auth_token=auth_token,
+            catalogs=catalogs,
+            task_id=task_id,
+            storage_provider=storage_provider,
+            storage_credentials=storage_credentials or {},
+            recursive=recursive,
+            pages_to_read=pages_to_read,
+            reader_type=reader_type,
+            temp_dir=temp_dir,
+            api_base_url=api_base_url,
+            user_id=user_id,
+        )
+        
+        # Start the workflow (fire-and-forget for now)
+        handle = await client.start_workflow(
+            "IngestionPipelineWorkflow",
+            params,
+            id=f"ingestion-{task_id}",
+            task_queue=INGESTION_TASK_QUEUE,
+        )
+        
+        logger.info(f"✅ Started ingestion workflow: {handle.id}")
+        
+        return IngestionTaskResult(
+            task_id=task_id,
+            status="started",
+            success=True,
+        )
+    except Exception as e:
+        logger.error(f"❌ Failed to start ingestion workflow: {e}", exc_info=True)
+        return IngestionTaskResult(
+            task_id=task_id,
+            status="failed",
+            success=False,
+            error=str(e),
+        )
+
+
+def run_ingestion_pipeline(**kwargs) -> "IngestionTaskResult":
+    """Synchronous wrapper to trigger ingestion pipeline via Temporal.
+    
+    This function can be passed to init_ingestion_wrapper() as the client.
+    It wraps the async workflow trigger for use in sync contexts.
+    """
+    from src.shared.temporal_client import run_async
+    
+    return run_async(_run_ingestion_pipeline_async(**kwargs))
