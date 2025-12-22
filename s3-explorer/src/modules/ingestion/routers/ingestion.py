@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from marshmallow import ValidationError
 from src.modules.ingestion.config.settings import IngestionConfig
-from src.modules.ingestion.core.classifiers.llm_classifier import LLMClassifier
+from src.modules.ingestion.core.classifiers.classifier_manager import ClassifierManager
 from src.modules.ingestion.core.connectors import get_storage_provider
 
 # Import implementations
@@ -35,7 +35,10 @@ ingestion_bp = Blueprint("ingestion", __name__, url_prefix="/api/v1/ingestion")
 
 
 def create_pipeline_from_request(
-    config: IngestionConfig, workspace_id: str, project_id: str, auth_token: str
+    config: IngestionConfig,
+    workspace_id: str,
+    project_id: str,
+    auth_token: str,
 ) -> IngestionPipeline:
     """Create and configure the ingestion pipeline from request data.
 
@@ -84,8 +87,8 @@ def create_pipeline_from_request(
         document_reader = PyMuPDFReader()
     else:
         document_reader = MarkitdownReader()
-    # Classifier uses LLM settings from env.py
-    classifier = LLMClassifier()
+
+    classifier = ClassifierManager.get_instance().classifier
 
     # Create collection handler
     if not config.api_base_url:
