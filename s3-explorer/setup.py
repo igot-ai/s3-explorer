@@ -41,7 +41,6 @@ setup(
     install_requires=[
         "flask>=3.0.0",
         "fastapi>=0.104.0",
-        "pydantic>=2.0.0",
         "python-dotenv>=1.0.1",
         "tiktoken>=0.7.0,<1.0.0",
         "boto3>=1.34.7",
@@ -58,7 +57,7 @@ setup(
         "google-auth>=2.27.0",
         "flask-wtf>=1.2.1",
         "wtforms>=3.1.1",
-        "s3fs>=2025.12.0",
+        "s3fs==2024.9.0",
         "pymupdf>=1.26.6",
         "pdfplumber>=0.11.8",
         "dspy @ git+https://github.com/igot-ai/dspy.git@main#extras=mcp",
@@ -66,5 +65,10 @@ setup(
         "marshmallow>=4.1.1",
         "loguru>=0.7.3",
         "patool>=4.0.3",
+        "aiobotocore==2.5.4",
+        "pydantic==2.9.2",
+        "tokenizers==0.19.1",
+        "boto3==1.28.17",
+        "botocore==1.31.17",
     ],
 )
