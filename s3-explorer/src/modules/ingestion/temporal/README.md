@@ -91,7 +91,7 @@ print(f"Task ID: {response.task_id}, Status: {response.status}")
 
 ```python
 from temporalio.client import Client
-from dataroutine.modules.ingestion.temporal.models import IngestionJobParams
+from src.modules.ingestion.temporal.models import IngestionJobParams
 
 client = await get_temporal_client()
 
@@ -123,7 +123,7 @@ python consumer.py ingestion
 ## Task Queue
 
 The default task queue is defined in:
-- `dataroutine.modules.ingestion.temporal.workflows.INGESTION_TASK_QUEUE`
+- `src.modules.ingestion.temporal.workflows.INGESTION_TASK_QUEUE`
 - Also available as `igotapi.const.INGESTION_PIPELINE_TASK_QUEUE`
 
 ## Decoupling Design
@@ -144,5 +144,3 @@ Run tests:
 ```bash
 pytest api/dataroutine/s3-explorer/src/modules/ingestion/tests/test_temporal_*.py
 ```
-
-

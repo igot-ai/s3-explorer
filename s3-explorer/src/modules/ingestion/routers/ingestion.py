@@ -1,14 +1,13 @@
 from flask import Blueprint, jsonify, request
 from marshmallow import ValidationError
-from src.modules.ingestion.schemas.ingestion import ingestion_request_schema
-from src.shared._logging import get_logger
 from src.modules.ingestion.core.connectors import get_storage_provider
 from src.modules.ingestion.core.connectors.s3_connector import S3SourceConnector
+from src.modules.ingestion.schemas.ingestion import ingestion_request_schema
+from src.shared._logging import get_logger
 
 logger = get_logger(__name__)
 
 ingestion_bp = Blueprint("ingestion", __name__, url_prefix="/api/v1/ingestion")
-
 
 
 @ingestion_bp.route("/run", methods=["POST"])
@@ -42,8 +41,16 @@ def run_ingestion():
             )
 
         config_data = req["config"]
-        storage_creds = {k: v for k, v in config_data.get("storage_credentials", {}).items() if v is not None}
-        source_path = config_data["source_path"][:-1] if config_data["source_path"] and config_data["source_path"].endswith("/") else config_data["source_path"]
+        storage_creds = {
+            k: v
+            for k, v in config_data.get("storage_credentials", {}).items()
+            if v is not None
+        }
+        source_path = (
+            config_data["source_path"][:-1]
+            if config_data["source_path"] and config_data["source_path"].endswith("/")
+            else config_data["source_path"]
+        )
 
         workspace_id = config_data.get("workspace_id")
         project_id = config_data.get("project_id")
@@ -71,13 +78,14 @@ def run_ingestion():
             for cat in req["catalogs"]
         ]
 
-        from dataroutine.modules.ingestion.wrapper import get_ingestion_wrapper
+        from src.modules.ingestion.wrapper import get_ingestion_wrapper
+
         wrapper = get_ingestion_wrapper()
-        
+
         # Convert catalogs to list of dicts if needed, though wrapper expects list of dicts
         # The schema validation in ingestion.py returns dicts for catalogs already?
         # req["catalogs"] is a list of dicts.
-        
+
         response = wrapper.trigger_ingestion(
             source_path=source_path,
             workspace_id=workspace_id,
@@ -89,7 +97,7 @@ def run_ingestion():
             storage_credentials=storage_creds,
             recursive=config_data.get("recursive", True),
             pages_to_read=config_data.get("pages_to_read", 3),
-            reader_type=config_data.get("reader_type") or "pymupdf",
+            reader_type=config_data.get("reader_type"),
             temp_dir=config_data.get("temp_dir"),
             api_base_url=config_data.get("api_base_url"),
             user_id=config_data.get("user_id"),

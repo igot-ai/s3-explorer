@@ -5,16 +5,15 @@ that serves both the S3 Explorer web UI and the ingestion API.
 """
 
 import os
-from pathlib import Path
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-
 from src.shared._logging import get_logger
+from starlette.middleware.sessions import SessionMiddleware
 
 logger = get_logger(__name__)
 
@@ -23,24 +22,28 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     logger.info("Starting S3 Explorer FastAPI application")
-    
+
     # Initialize ingestion wrapper with Temporal client
     try:
-        from dataroutine.modules.ingestion.wrapper import init_ingestion_wrapper, run_ingestion_pipeline
-        
+        from src.modules.ingestion.wrapper import (
+            init_ingestion_wrapper,
+            run_ingestion_pipeline,
+        )
+
         logger.info("Initializing ingestion wrapper with Temporal client")
         logger.debug("About to call init_ingestion_wrapper")
         init_ingestion_wrapper(run_ingestion_pipeline)
         logger.debug("Called init_ingestion_wrapper successfully")
     except Exception as e:
         logger.error(f"Failed to initialize ingestion wrapper: {e}")
-    
+
     yield
-    
+
     # Shutdown: close Temporal client
     logger.info("Shutting down S3 Explorer FastAPI application")
     try:
-        from dataroutine.shared.temporal_client import close_temporal_client
+        from src.shared.temporal_client import close_temporal_client
+
         await close_temporal_client()
     except Exception as e:
         logger.warning(f"Error closing Temporal client: {e}")
@@ -81,9 +84,10 @@ def create_app() -> FastAPI:
 
     # Static files and templates
     import src.modules.s3_explore
+
     s3_explore_root = Path(src.modules.s3_explore.__file__).parent
     s3_explore_web_dir = s3_explore_root / "web"
-    
+
     app.mount(
         "/static",
         StaticFiles(directory=str(s3_explore_web_dir / "static")),
@@ -91,11 +95,13 @@ def create_app() -> FastAPI:
     )
 
     # Store templates in app state for use in routes
-    app.state.templates = Jinja2Templates(directory=str(s3_explore_web_dir / "templates"))
+    app.state.templates = Jinja2Templates(
+        directory=str(s3_explore_web_dir / "templates")
+    )
 
     # Include routers
-    from src.modules.s3_explore.web.router import router as s3_explore_router
     from src.modules.ingestion.routers import router as ingestion_router
+    from src.modules.s3_explore.web.router import router as s3_explore_router
 
     app.include_router(s3_explore_router)
     app.include_router(ingestion_router)

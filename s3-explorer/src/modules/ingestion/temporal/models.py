@@ -8,34 +8,45 @@ to delegate to the pipeline without tight coupling.
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from src.modules.ingestion.env import API_BASE_URL, READER_TYPE, TEMP_DIR
+
 
 @dataclass
 class CatalogParams:
     """Catalog configuration for document classification.
-    
+
     Attributes:
         id: Unique identifier for the catalog/collection
         instruction: Classification instruction for LLM
         fetch_all_metadata: If True, aggregate metadata from all catalogs for the folder
     """
+
     id: str
     instruction: str
     fetch_all_metadata: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
-        return {"id": self.id, "instruction": self.instruction, "fetch_all_metadata": self.fetch_all_metadata}
+        return {
+            "id": self.id,
+            "instruction": self.instruction,
+            "fetch_all_metadata": self.fetch_all_metadata,
+        }
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CatalogParams":
         """Create from dictionary."""
-        return cls(id=data["id"], instruction=data["instruction"], fetch_all_metadata=data.get("fetch_all_metadata", False))
+        return cls(
+            id=data["id"],
+            instruction=data["instruction"],
+            fetch_all_metadata=data.get("fetch_all_metadata", False),
+        )
 
 
 @dataclass
 class StorageCredentials:
     """Storage provider credentials.
-    
+
     Attributes:
         access_key: AWS/S3 compatible access key
         secret_key: AWS/S3 compatible secret key
@@ -44,6 +55,7 @@ class StorageCredentials:
         account_id: Cloudflare account ID (for R2)
         endpoint_url: Custom endpoint URL (for S3-compatible services)
     """
+
     access_key: str = ""
     secret_key: str = ""
     bucket: str = ""
@@ -53,7 +65,11 @@ class StorageCredentials:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary, excluding None values."""
-        result = {"access_key": self.access_key, "secret_key": self.secret_key, "bucket": self.bucket}
+        result = {
+            "access_key": self.access_key,
+            "secret_key": self.secret_key,
+            "bucket": self.bucket,
+        }
         if self.region:
             result["region"] = self.region
         if self.account_id:
@@ -78,10 +94,10 @@ class StorageCredentials:
 @dataclass
 class IngestionJobParams:
     """Parameters for an ingestion pipeline workflow.
-    
+
     This is the single dataclass used as workflow input, following Temporal best practices.
     External services (like catalog) can construct this to delegate to the ingestion pipeline.
-    
+
     Attributes:
         source_path: S3 path to process (e.g., "raw-documents/")
         workspace_id: Workspace ID for data collection API
@@ -98,6 +114,7 @@ class IngestionJobParams:
         api_base_url: Base URL for data collection API
         user_id: Optional user ID who initiated the job
     """
+
     source_path: str
     workspace_id: str
     project_id: str
@@ -108,9 +125,9 @@ class IngestionJobParams:
     storage_credentials: Dict[str, Any] = field(default_factory=dict)
     recursive: bool = True
     pages_to_read: int = 3
-    reader_type: str = "pymupdf"
-    temp_dir: Optional[str] = None
-    api_base_url: Optional[str] = None
+    temp_dir: Optional[str] = field(default_factory=lambda: TEMP_DIR)
+    reader_type: str = field(default_factory=lambda: READER_TYPE)
+    api_base_url: str = field(default_factory=lambda: API_BASE_URL)
     user_id: Optional[str] = None
 
     def get_catalogs(self) -> List[CatalogParams]:
@@ -150,7 +167,7 @@ class IngestionJobParams:
             storage_credentials=data.get("storage_credentials", {}),
             recursive=data.get("recursive", True),
             pages_to_read=data.get("pages_to_read", 3),
-            reader_type=data.get("reader_type", "pymupdf"),
+            reader_type=data.get("reader_type", READER_TYPE),
             temp_dir=data.get("temp_dir"),
             api_base_url=data.get("api_base_url"),
             user_id=data.get("user_id"),
@@ -160,9 +177,9 @@ class IngestionJobParams:
 @dataclass
 class IngestionResult:
     """Result of an ingestion pipeline execution.
-    
+
     This is returned by the workflow and can be used by callback workflows.
-    
+
     Attributes:
         success: Whether the pipeline completed without failures
         task_id: Task identifier
@@ -175,6 +192,7 @@ class IngestionResult:
         folders: List of folder results
         error: Error message if the pipeline failed entirely
     """
+
     success: bool
     task_id: str
     total_folders: int = 0
@@ -221,4 +239,3 @@ class IngestionResult:
     def failure(cls, task_id: str, error: str) -> "IngestionResult":
         """Create a failure result."""
         return cls(success=False, task_id=task_id, error=error)
-

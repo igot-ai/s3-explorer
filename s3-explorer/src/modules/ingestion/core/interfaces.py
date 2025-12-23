@@ -1,19 +1,24 @@
 """Interfaces for ingestion module."""
 
-from typing import Protocol, Dict, Any, Optional, List
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Protocol
+
+from src.modules.ingestion.env import READER_TYPE, TEMP_DIR
+
 
 @dataclass
 class IngestionResponse:
     """Standard response from ingestion client."""
+
     task_id: str
     status: str
     success: bool
     error: Optional[str] = None
 
+
 class IngestionClientProtocol(Protocol):
     """Protocol for ingestion client."""
-    
+
     def __call__(
         self,
         source_path: str,
@@ -26,8 +31,8 @@ class IngestionClientProtocol(Protocol):
         storage_credentials: Optional[Dict[str, Any]] = None,
         recursive: bool = True,
         pages_to_read: int = 3,
-        reader_type: str = "pymupdf",
-        temp_dir: Optional[str] = None,
+        reader_type: str = READER_TYPE,
+        temp_dir: Optional[str] = TEMP_DIR,
         api_base_url: Optional[str] = None,
         user_id: Optional[str] = None,
         callback_workflow: Optional[str] = None,

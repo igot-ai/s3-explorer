@@ -1,7 +1,6 @@
 """Unit tests for Temporal workflow models."""
 
-import pytest
-from dataroutine.modules.ingestion.temporal.models import (
+from src.modules.ingestion.temporal.models import (
     CatalogParams,
     IngestionJobParams,
     IngestionResult,
@@ -223,4 +222,3 @@ class TestIngestionResult:
         assert result.success is True
         assert result.total_files == 10
         assert result.success_rate == "80.00%"
-

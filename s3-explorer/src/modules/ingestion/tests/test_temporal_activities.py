@@ -5,32 +5,43 @@ Note: Full integration tests would require Temporal server, but we can test
 the activity logic in isolation.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-from dataroutine.modules.ingestion.temporal.models import IngestionJobParams, IngestionResult
-from dataroutine.modules.ingestion.temporal.activities import (
-    _create_pipeline,
+from unittest.mock import Mock, patch
+
+from src.modules.ingestion.temporal.activities import (
     _build_job_config,
     _build_result,
+    _create_pipeline,
     run_ingestion_pipeline_activity,
 )
+from src.modules.ingestion.temporal.models import IngestionJobParams, IngestionResult
 
 
 class TestActivityHelpers:
     """Test helper functions used by activities."""
 
-    @patch("dataroutine.modules.ingestion.temporal.activities.get_storage_provider")
-    @patch("dataroutine.modules.ingestion.temporal.activities.S3SourceConnector")
-    @patch("dataroutine.modules.ingestion.temporal.activities.DocxToPdfConverter")
-    @patch("dataroutine.modules.ingestion.temporal.activities.ArchiveExtractor")
-    @patch("dataroutine.modules.ingestion.temporal.activities.SimpleZipExtractor")
-    @patch("dataroutine.modules.ingestion.temporal.activities.FileProcessorChain")
-    @patch("dataroutine.modules.ingestion.temporal.activities.PyMuPDFReader")
-    @patch("dataroutine.modules.ingestion.temporal.activities.LLMClassifier")
-    @patch("dataroutine.modules.ingestion.temporal.activities.DataCollectionAPIHandler")
-    @patch("dataroutine.modules.ingestion.temporal.activities.IngestionPipeline")
-    def test_create_pipeline(self, mock_pipeline, mock_handler, mock_classifier, mock_reader,
-                             mock_chain, mock_zip, mock_archive, mock_converter, mock_connector, mock_provider):
+    @patch("src.modules.ingestion.temporal.activities.get_storage_provider")
+    @patch("src.modules.ingestion.temporal.activities.S3SourceConnector")
+    @patch("src.modules.ingestion.temporal.activities.DocxToPdfConverter")
+    @patch("src.modules.ingestion.temporal.activities.ArchiveExtractor")
+    @patch("src.modules.ingestion.temporal.activities.SimpleZipExtractor")
+    @patch("src.modules.ingestion.temporal.activities.FileProcessorChain")
+    @patch("src.modules.ingestion.temporal.activities.PyMuPDFReader")
+    @patch("src.modules.ingestion.temporal.activities.LLMClassifier")
+    @patch("src.modules.ingestion.temporal.activities.DataCollectionAPIHandler")
+    @patch("src.modules.ingestion.temporal.activities.IngestionPipeline")
+    def test_create_pipeline(
+        self,
+        mock_pipeline,
+        mock_handler,
+        mock_classifier,
+        mock_reader,
+        mock_chain,
+        mock_zip,
+        mock_archive,
+        mock_converter,
+        mock_connector,
+        mock_provider,
+    ):
         """Test pipeline creation helper."""
         params = IngestionJobParams(
             source_path="test/",
@@ -40,17 +51,21 @@ class TestActivityHelpers:
             catalogs=[{"id": "cat1", "instruction": "Test"}],
             api_base_url="http://api.example.com",
             storage_provider="aws",
-            storage_credentials={"access_key": "key", "secret_key": "secret", "bucket": "bucket"},
+            storage_credentials={
+                "access_key": "key",
+                "secret_key": "secret",
+                "bucket": "bucket",
+            },
         )
-        
+
         mock_converter_instance = Mock()
         mock_converter_instance.is_libreoffice_available.return_value = False
         mock_converter.return_value = mock_converter_instance
-        
+
         mock_archive_instance = Mock()
         mock_archive_instance.available = False
         mock_archive.return_value = mock_archive_instance
-        
+
         pipeline = _create_pipeline(params)
         assert pipeline is not None
         mock_provider.assert_called_once()
@@ -63,11 +78,13 @@ class TestActivityHelpers:
             workspace_id="ws",
             project_id="proj",
             auth_token="token",
-            catalogs=[{"id": "cat1", "instruction": "Test", "fetch_all_metadata": False}],
+            catalogs=[
+                {"id": "cat1", "instruction": "Test", "fetch_all_metadata": False}
+            ],
             recursive=True,
             pages_to_read=5,
         )
-        
+
         config = _build_job_config(params)
         assert config.source_path == "test"
         assert config.recursive is True
@@ -77,14 +94,19 @@ class TestActivityHelpers:
 
     def test_build_result(self):
         """Test result building from pipeline result."""
-        from dataroutine.modules.ingestion.core.models import PipelineResult, FolderContext, FileContext, FileStatus
-        
+        from src.modules.ingestion.core.models import (
+            FileContext,
+            FileStatus,
+            FolderContext,
+            PipelineResult,
+        )
+
         folder_ctx = FolderContext(folder_path="test/")
         file1 = FileContext(source_path="file1.pdf", status=FileStatus.UPLOADED)
         file2 = FileContext(source_path="file2.pdf", status=FileStatus.FAILED)
         folder_ctx.add_file(file1)
         folder_ctx.add_file(file2)
-        
+
         pipeline_result = PipelineResult(
             total_folders=1,
             total_files=2,
@@ -93,7 +115,7 @@ class TestActivityHelpers:
             folder_contexts=[folder_ctx],
             execution_time_seconds=10.5,
         )
-        
+
         result = _build_result(pipeline_result, "task-123")
         assert result.task_id == "task-123"
         assert result.total_folders == 1
@@ -106,10 +128,12 @@ class TestActivityHelpers:
 class TestRunIngestionPipelineActivity:
     """Test the main ingestion pipeline activity."""
 
-    @patch("dataroutine.modules.ingestion.temporal.activities._create_pipeline")
-    @patch("dataroutine.modules.ingestion.temporal.activities._build_job_config")
-    @patch("dataroutine.modules.ingestion.temporal.activities._build_result")
-    def test_run_ingestion_pipeline_activity_success(self, mock_build_result, mock_build_config, mock_create_pipeline):
+    @patch("src.modules.ingestion.temporal.activities._create_pipeline")
+    @patch("src.modules.ingestion.temporal.activities._build_job_config")
+    @patch("src.modules.ingestion.temporal.activities._build_result")
+    def test_run_ingestion_pipeline_activity_success(
+        self, mock_build_result, mock_build_config, mock_create_pipeline
+    ):
         """Test successful pipeline execution."""
         params = IngestionJobParams(
             source_path="test/",
@@ -120,7 +144,7 @@ class TestRunIngestionPipelineActivity:
             task_id="task-123",
             api_base_url="http://api.example.com",
         )
-        
+
         mock_pipeline = Mock()
         mock_pipeline.run.return_value = Mock(
             total_folders=1,
@@ -132,7 +156,7 @@ class TestRunIngestionPipelineActivity:
             get_success_rate=lambda: 100.0,
         )
         mock_create_pipeline.return_value = mock_pipeline
-        
+
         mock_result = IngestionResult(
             success=True,
             task_id="task-123",
@@ -141,14 +165,14 @@ class TestRunIngestionPipelineActivity:
             failed=0,
         )
         mock_build_result.return_value = mock_result
-        
+
         result_dict = run_ingestion_pipeline_activity(params)
-        
+
         assert result_dict["success"] is True
         assert result_dict["task_id"] == "task-123"
         mock_pipeline.run.assert_called_once()
 
-    @patch("dataroutine.modules.ingestion.temporal.activities._create_pipeline")
+    @patch("src.modules.ingestion.temporal.activities._create_pipeline")
     def test_run_ingestion_pipeline_activity_failure(self, mock_create_pipeline):
         """Test pipeline execution failure."""
         params = IngestionJobParams(
@@ -159,11 +183,11 @@ class TestRunIngestionPipelineActivity:
             catalogs=[{"id": "cat1", "instruction": "Test"}],
             task_id="task-123",
         )
-        
+
         mock_create_pipeline.side_effect = ValueError("Invalid configuration")
-        
+
         result_dict = run_ingestion_pipeline_activity(params)
-        
+
         assert result_dict["success"] is False
         assert result_dict["task_id"] == "task-123"
         assert "error" in result_dict
@@ -178,10 +202,14 @@ class TestRunIngestionPipelineActivity:
             catalogs=[{"id": "cat1", "instruction": "Test"}],
             task_id="",  # Empty task_id
         )
-        
-        with patch("dataroutine.modules.ingestion.temporal.activities._create_pipeline") as mock_create:
-            with patch("dataroutine.modules.ingestion.temporal.activities._build_job_config") as mock_config:
-                with patch("dataroutine.modules.ingestion.temporal.activities._build_result") as mock_result:
+
+        with patch(
+            "src.modules.ingestion.temporal.activities._create_pipeline"
+        ) as mock_create:
+            with patch("src.modules.ingestion.temporal.activities._build_job_config"):
+                with patch(
+                    "src.modules.ingestion.temporal.activities._build_result"
+                ) as mock_result:
                     mock_pipeline = Mock()
                     mock_pipeline.run.return_value = Mock(
                         total_folders=0,
@@ -200,10 +228,9 @@ class TestRunIngestionPipelineActivity:
                         successful=0,
                         failed=0,
                     )
-                    
+
                     result_dict = run_ingestion_pipeline_activity(params)
-                    
+
                     # Task ID should be generated (UUID format)
                     assert "task_id" in result_dict
                     assert len(result_dict["task_id"]) > 0
-
