@@ -134,9 +134,9 @@ class IngestionJobParams:
         if self.reader_type is None:
             self.reader_type = READER_TYPE
         if self.temp_dir is None:
-            self.temp_dir = READER_TYPE
+            self.temp_dir = TEMP_DIR
         if self.api_base_url is None:
-            self.api_base_url = READER_TYPE
+            self.api_base_url = API_BASE_URL
 
     def get_catalogs(self) -> List[CatalogParams]:
         """Convert catalog dictionaries to CatalogParams objects."""
