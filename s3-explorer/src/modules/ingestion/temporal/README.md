@@ -46,7 +46,7 @@ This module provides Temporal workflow orchestration for the data ingestion pipe
 
 - **IngestionJobParams**: Single dataclass for workflow input (follows Temporal best practices)
 - **IngestionResult**: Workflow output with execution statistics
-- **CatalogParams**: Catalog configuration for document classification
+- **Catalog**: Catalog configuration for document classification
 
 ### Activities (`temporal/activities.py`)
 

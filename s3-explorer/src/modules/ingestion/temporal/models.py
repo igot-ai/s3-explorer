@@ -8,39 +8,8 @@ to delegate to the pipeline without tight coupling.
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from src.modules.ingestion.core.models import Catalog
 from src.modules.ingestion.env import API_BASE_URL, READER_TYPE, TEMP_DIR
-
-
-@dataclass
-class CatalogParams:
-    """Catalog configuration for document classification.
-
-    Attributes:
-        id: Unique identifier for the catalog/collection
-        instruction: Classification instruction for LLM
-        fetch_all_metadata: If True, aggregate metadata from all catalogs for the folder
-    """
-
-    id: str
-    instruction: str
-    fetch_all_metadata: bool = False
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
-        return {
-            "id": self.id,
-            "instruction": self.instruction,
-            "fetch_all_metadata": self.fetch_all_metadata,
-        }
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "CatalogParams":
-        """Create from dictionary."""
-        return cls(
-            id=data["id"],
-            instruction=data["instruction"],
-            fetch_all_metadata=data.get("fetch_all_metadata", False),
-        )
 
 
 @dataclass
@@ -138,9 +107,9 @@ class IngestionJobParams:
         if self.api_base_url is None:
             self.api_base_url = API_BASE_URL
 
-    def get_catalogs(self) -> List[CatalogParams]:
-        """Convert catalog dictionaries to CatalogParams objects."""
-        return [CatalogParams.from_dict(c) for c in self.catalogs]
+    def get_catalogs(self) -> List[Catalog]:
+        """Convert catalog dictionaries to Catalog objects."""
+        return [Catalog.from_dict(c) for c in self.catalogs]
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""

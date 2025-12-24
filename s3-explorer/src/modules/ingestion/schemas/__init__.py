@@ -1,19 +1,17 @@
 """Pydantic schemas for ingestion API endpoints."""
 
 from src.modules.ingestion.schemas.fastapi_models import (
-    CatalogModel,
-    StorageCredentialsModel,
+    FileResultModel,
+    FolderResultModel,
     IngestionConfigModel,
     IngestionRequestModel,
     IngestionResponseModel,
-    FileResultModel,
-    FolderResultModel,
     ListPrefixesRequestModel,
     ListPrefixesResponseModel,
+    StorageCredentialsModel,
 )
 
 __all__ = [
-    "CatalogModel",
     "StorageCredentialsModel",
     "IngestionConfigModel",
     "IngestionRequestModel",

@@ -1,6 +1,5 @@
 """FastAPI routes for ingestion pipeline."""
 
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from fastapi.security import HTTPBearer
@@ -20,20 +19,6 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/v1/ingestion", tags=["Ingestion"])
 
 security = HTTPBearer(auto_error=False)
-
-
-def _normalize_token(value: Optional[str]) -> Optional[str]:
-    """Normalize token strings so we can accept both 'Bearer <token>' and '<token>'."""
-    if not value:
-        return None
-    value = value.strip()
-    if not value:
-        return None
-    parts = value.split()
-    if len(parts) == 2 and parts[0].lower() == "bearer":
-        token = parts[1].strip()
-        return token or None
-    return value
 
 
 @router.post("/run", response_model=IngestionResponseModel)
@@ -75,14 +60,7 @@ def run_ingestion(
             storage_creds_dict = {}
 
         # Convert catalogs to dict format
-        catalogs = [
-            {
-                "id": cat.id,
-                "instruction": cat.instruction,
-                "fetch_all_metadata": cat.fetch_all_metadata,
-            }
-            for cat in request.catalogs
-        ]
+        catalogs = [cat.model_dump() for cat in request.catalogs]
 
         # Get wrapper and trigger ingestion
         wrapper = get_ingestion_wrapper()
