@@ -5,6 +5,7 @@ All actual processing is delegated to activities.
 """
 
 import logging
+import os
 from datetime import timedelta
 from typing import Dict, Any
 
@@ -18,8 +19,9 @@ with workflow.unsafe.imports_passed_through():  # Activities need to be imported
     from src.modules.ingestion.temporal.models import IngestionJobParams
 
 
-# Default task queue for ingestion workflows - can be imported by other modules
-INGESTION_TASK_QUEUE = "ingestion-pipeline-task-queue"
+# Task queue for ingestion workflows - defaults to model-training queue for consolidated deployment
+# Can be overridden via INGESTION_TASK_QUEUE environment variable
+INGESTION_TASK_QUEUE = os.getenv("INGESTION_TASK_QUEUE", "model-training-task-queue")
 DEFAULT_TIMEOUT_MINUTES = 60  # 1 hour default timeout for pipeline execution
 
 
