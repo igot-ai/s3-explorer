@@ -250,6 +250,7 @@ export async function runIngestionPipeline(request: IngestionRequest): Promise<I
   const response = await fetch(`${INGESTION_API_URL}/run`, {
     method: 'POST',
     headers: {
+      'Authorization': `Bearer ${AUTH_TOKEN}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(request),
@@ -317,6 +318,7 @@ export async function listS3Prefixes(
   const response = await fetch(`${INGESTION_API_URL}/list-prefixes`, {
     method: 'POST',
     headers: {
+      'Authorization': `Bearer ${AUTH_TOKEN}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({

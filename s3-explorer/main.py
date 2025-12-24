@@ -1,3 +1,9 @@
+"""S3 Explorer Application Entry Point.
+
+Run with: uvicorn main:app --reload --port 5001
+Or:       python main.py
+"""
+
 import os
 import sys
 from pathlib import Path
@@ -10,10 +16,8 @@ for _p in (str(_SRC_DIR), str(_MODULES_DIR)):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from src.shared.app_factory import create_app
+from src.shared.main import app
 from src.shared.config.s3_config import s3_config
-
-app = create_app()
 
 
 def check_aws_credentials():
@@ -30,13 +34,25 @@ def check_aws_credentials():
 
 
 if __name__ == "__main__":
+    import uvicorn
+    
     check_aws_credentials()
     # Check if we're in production environment
     is_production = os.environ.get("PRODUCTION", "false").lower() == "true"
 
     if is_production:
         # Production settings
-        app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5001)), debug=False)
+        uvicorn.run(
+            "main:app",
+            host="0.0.0.0",
+            port=int(os.environ.get("PORT", 5001)),
+            reload=False,
+        )
     else:
         # Development settings
-        app.run(host="0.0.0.0", port=5001, debug=True)
+        uvicorn.run(
+            "main:app",
+            host="0.0.0.0",
+            port=5001,
+            reload=True,
+        )
