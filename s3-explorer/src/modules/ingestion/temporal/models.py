@@ -125,10 +125,18 @@ class IngestionJobParams:
     storage_credentials: Dict[str, Any] = field(default_factory=dict)
     recursive: bool = True
     pages_to_read: int = 3
-    temp_dir: Optional[str] = field(default_factory=lambda: TEMP_DIR)
-    reader_type: str = field(default_factory=lambda: READER_TYPE)
-    api_base_url: str = field(default_factory=lambda: API_BASE_URL)
+    temp_dir: Optional[str] = TEMP_DIR
+    reader_type: Optional[str] = READER_TYPE
+    api_base_url: Optional[str] = API_BASE_URL
     user_id: Optional[str] = None
+
+    def __post_init__(self):
+        if self.reader_type is None:
+            self.reader_type = READER_TYPE
+        if self.temp_dir is None:
+            self.temp_dir = READER_TYPE
+        if self.api_base_url is None:
+            self.api_base_url = READER_TYPE
 
     def get_catalogs(self) -> List[CatalogParams]:
         """Convert catalog dictionaries to CatalogParams objects."""
