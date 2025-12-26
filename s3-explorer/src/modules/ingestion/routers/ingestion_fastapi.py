@@ -16,7 +16,7 @@ from src.shared._logging import get_logger
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/api/v1/ingestion", tags=["Ingestion"])
+router = APIRouter(prefix="/ingestion", tags=["Ingestion"])
 
 security = HTTPBearer(auto_error=False)
 

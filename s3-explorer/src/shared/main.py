@@ -39,15 +39,7 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Error closing Temporal client: {e}")
 
 
-def create_app() -> FastAPI:
-    """Create and configure the FastAPI application."""
-    app = FastAPI(
-        title="S3 Explorer",
-        description="S3-compatible storage browser and ingestion pipeline",
-        version="1.0.0",
-        lifespan=lifespan,
-    )
-
+def create_app(app: FastAPI) -> FastAPI:
     # Session middleware (required for login state)
     secret_key = os.environ.get("SECRET_KEY", os.urandom(32).hex())
     app.add_middleware(
@@ -100,6 +92,3 @@ def create_app() -> FastAPI:
 
     return app
 
-
-# Create application instance
-app = create_app()

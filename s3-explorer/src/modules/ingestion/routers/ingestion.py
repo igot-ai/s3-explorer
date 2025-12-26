@@ -7,7 +7,7 @@ from src.shared._logging import get_logger
 
 logger = get_logger(__name__)
 
-ingestion_bp = Blueprint("ingestion", __name__, url_prefix="/api/v1/ingestion")
+ingestion_bp = Blueprint("ingestion", __name__, url_prefix="/ingestion")
 
 
 @ingestion_bp.route("/run", methods=["POST"])
