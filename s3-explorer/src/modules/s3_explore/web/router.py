@@ -8,16 +8,14 @@ import json
 import mimetypes
 import os
 import re
-from functools import wraps
+import secrets
 from io import BytesIO
-from typing import Optional
 
-from fastapi import APIRouter, Request, UploadFile, File, Form, Depends, HTTPException
-from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse, FileResponse
-from werkzeug.utils import secure_filename
-
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from src.shared._logging import get_logger
 from src.shared.storage import get_storage_provider
+from werkzeug.utils import secure_filename
 
 logger = get_logger(__name__)
 
@@ -62,28 +60,60 @@ def get_current_provider(request: Request):
         return None
 
 
-@router.get("/")
+@router.get("/", name="s3_explore.index")
 async def index(request: Request):
     """Index page - redirects to configure if not authenticated."""
     if not is_authenticated(request):
         return RedirectResponse(url="/configure", status_code=302)
-    
-    provider = get_current_provider(request)
-    if not provider:
-        return RedirectResponse(url="/configure", status_code=302)
-    
+
+    csrf_token = request.session.get("csrf_token")
+    if not csrf_token:
+        csrf_token = secrets.token_hex(32)
+        request.session["csrf_token"] = csrf_token
+
     templates = get_templates(request)
-    return templates.TemplateResponse("index.html", {"request": request})
+    response = templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={"session": request.session, "csrf_token": lambda: csrf_token},
+    )
+    response.set_cookie("csrf_token", csrf_token, httponly=False)
+    return response
 
 
-@router.get("/configure")
+@router.get("/configure", name="s3_explore.configure_storage")
 async def configure_storage_get(request: Request):
     """Storage configuration page."""
+    csrf_token = request.session.get("csrf_token")
+    if not csrf_token:
+        csrf_token = secrets.token_hex(32)
+        request.session["csrf_token"] = csrf_token
+
     templates = get_templates(request)
-    return templates.TemplateResponse("configure.html", {"request": request})
+    response = templates.TemplateResponse(
+        request=request,
+        name="configure.html",
+        context={"session": request.session, "csrf_token": lambda: csrf_token},
+    )
+    # Also set as cookie to satisfy the frontend's getCsrfToken()
+    response.set_cookie("csrf_token", csrf_token, httponly=False)
+    return response
 
 
-@router.post("/configure")
+@router.get("/get-csrf-token")
+async def get_csrf_token(request: Request):
+    """Get or generate CSRF token."""
+    csrf_token = request.session.get("csrf_token")
+    if not csrf_token:
+        csrf_token = secrets.token_hex(32)
+        request.session["csrf_token"] = csrf_token
+
+    response = JSONResponse({"csrf_token": csrf_token})
+    response.set_cookie("csrf_token", csrf_token, httponly=False)
+    return response
+
+
+@router.post("/configure", name="s3_explore.configure_storage")
 async def configure_storage_post(request: Request):
     """Handle storage configuration form submission."""
     form = await request.form()
@@ -98,15 +128,25 @@ async def configure_storage_post(request: Request):
             bucket = str(form.get("bucket", "")).strip()
 
             if not account_id:
-                return JSONResponse({"error": "Account ID is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Account ID is required"}, status_code=400
+                )
             if not access_key:
-                return JSONResponse({"error": "Access Key ID is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Access Key ID is required"}, status_code=400
+                )
             if not secret_key:
-                return JSONResponse({"error": "Secret Access Key is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Secret Access Key is required"}, status_code=400
+                )
             if not bucket:
-                return JSONResponse({"error": "Bucket name is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Bucket name is required"}, status_code=400
+                )
             if not re.match(r"^[a-zA-Z0-9.\-_]{3,63}$", bucket):
-                return JSONResponse({"error": "Invalid bucket name format"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Invalid bucket name format"}, status_code=400
+                )
 
             credentials = {
                 "account_id": account_id,
@@ -127,13 +167,22 @@ async def configure_storage_post(request: Request):
             bucket_name = str(form.get("bucket_name", "")).strip()
 
             if not key_id:
-                return JSONResponse({"error": "Application Key ID is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Application Key ID is required"}, status_code=400
+                )
             if not application_key:
-                return JSONResponse({"error": "Application Key is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Application Key is required"}, status_code=400
+                )
             if not bucket_name:
-                return JSONResponse({"error": "Bucket name is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Bucket name is required"}, status_code=400
+                )
             if not re.match(r"^[a-z0-9-]{6,50}$", bucket_name):
-                return JSONResponse({"error": "Invalid bucket name format for Backblaze B2"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Invalid bucket name format for Backblaze B2"},
+                    status_code=400,
+                )
 
             credentials = {
                 "application_key_id": key_id,
@@ -143,7 +192,9 @@ async def configure_storage_post(request: Request):
         elif provider_type == "gcs":
             credentials_json = str(form.get("credentials_json", "")).strip()
             if not credentials_json:
-                return JSONResponse({"error": "Service account JSON is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Service account JSON is required"}, status_code=400
+                )
 
             try:
                 json.loads(credentials_json)
@@ -151,9 +202,13 @@ async def configure_storage_post(request: Request):
                 bucket_name = str(form.get("bucket_name", "")).strip()
 
                 if not project_id:
-                    return JSONResponse({"error": "Project ID is required"}, status_code=400)
+                    return JSONResponse(
+                        {"error": "Project ID is required"}, status_code=400
+                    )
                 if not bucket_name:
-                    return JSONResponse({"error": "Bucket name is required"}, status_code=400)
+                    return JSONResponse(
+                        {"error": "Bucket name is required"}, status_code=400
+                    )
 
                 credentials = {
                     "project_id": project_id,
@@ -161,7 +216,10 @@ async def configure_storage_post(request: Request):
                     "credentials_json": credentials_json,
                 }
             except json.JSONDecodeError as e:
-                return JSONResponse({"error": f"Invalid service account JSON format: {str(e)}"}, status_code=400)
+                return JSONResponse(
+                    {"error": f"Invalid service account JSON format: {str(e)}"},
+                    status_code=400,
+                )
         elif provider_type == "digitalocean":
             access_key = str(form.get("access_key", "")).strip()
             secret_key = str(form.get("secret_key", "")).strip()
@@ -169,17 +227,28 @@ async def configure_storage_post(request: Request):
             region = str(form.get("region", "")).strip()
 
             if not access_key:
-                return JSONResponse({"error": "Access Key is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Access Key is required"}, status_code=400
+                )
             if not secret_key:
-                return JSONResponse({"error": "Secret Key is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Secret Key is required"}, status_code=400
+                )
             if not bucket:
-                return JSONResponse({"error": "Bucket name is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Bucket name is required"}, status_code=400
+                )
             if not region:
                 return JSONResponse({"error": "Region is required"}, status_code=400)
             if not re.match(r"^[a-z0-9][a-z0-9.-]{2,62}[a-z0-9]$", bucket):
-                return JSONResponse({"error": "Invalid bucket name format for DigitalOcean Spaces"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Invalid bucket name format for DigitalOcean Spaces"},
+                    status_code=400,
+                )
             if region not in ["nyc3", "ams3", "sgp1", "fra1", "sfo3"]:
-                return JSONResponse({"error": "Invalid region for DigitalOcean Spaces"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Invalid region for DigitalOcean Spaces"}, status_code=400
+                )
 
             credentials = {
                 "access_key": access_key,
@@ -194,17 +263,28 @@ async def configure_storage_post(request: Request):
             region = str(form.get("region", "")).strip()
 
             if not access_key:
-                return JSONResponse({"error": "Access Key is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Access Key is required"}, status_code=400
+                )
             if not secret_key:
-                return JSONResponse({"error": "Secret Key is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Secret Key is required"}, status_code=400
+                )
             if not bucket:
-                return JSONResponse({"error": "Bucket name is required"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Bucket name is required"}, status_code=400
+                )
             if not region:
                 return JSONResponse({"error": "Region is required"}, status_code=400)
             if not re.match(r"^[a-z0-9][a-z0-9.-]{2,62}[a-z0-9]$", bucket):
-                return JSONResponse({"error": "Invalid bucket name format for Hetzner Storage"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Invalid bucket name format for Hetzner Storage"},
+                    status_code=400,
+                )
             if region not in ["nbg1", "fsn1", "hel1", "ash", "hil", "sin"]:
-                return JSONResponse({"error": "Invalid region for Hetzner Storage"}, status_code=400)
+                return JSONResponse(
+                    {"error": "Invalid region for Hetzner Storage"}, status_code=400
+                )
 
             credentials = {
                 "access_key": access_key,
@@ -213,7 +293,9 @@ async def configure_storage_post(request: Request):
                 "region": region,
             }
         else:
-            return JSONResponse({"error": "Invalid storage provider selected"}, status_code=400)
+            return JSONResponse(
+                {"error": "Invalid storage provider selected"}, status_code=400
+            )
 
         logger.debug(f"Attempting to create provider instance for {provider_type}")
         provider = get_storage_provider(provider_type, **credentials)
@@ -230,8 +312,12 @@ async def configure_storage_post(request: Request):
         else:
             request.session["bucket"] = credentials.get("bucket")
 
-        logger.info(f"Successfully configured {provider_type} provider with bucket: {request.session['bucket']}")
-        return JSONResponse({"message": "Configuration updated successfully"}, status_code=200)
+        logger.info(
+            f"Successfully configured {provider_type} provider with bucket: {request.session['bucket']}"
+        )
+        return JSONResponse(
+            {"message": "Configuration updated successfully"}, status_code=200
+        )
 
     except Exception as e:
         logger.error(f"Error configuring storage: {str(e)}", exc_info=True)
@@ -239,7 +325,9 @@ async def configure_storage_post(request: Request):
 
 
 @router.post("/upload")
-async def upload(request: Request, file: UploadFile = File(...), folder: str = Form("")):
+async def upload(
+    request: Request, file: UploadFile = File(...), folder: str = Form("")
+):
     """Upload a file to storage."""
     if not is_authenticated(request):
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
@@ -280,7 +368,9 @@ async def download(request: Request, filename: str):
         return StreamingResponse(
             file_obj,
             media_type="application/octet-stream",
-            headers={"Content-Disposition": f'attachment; filename="{os.path.basename(filename)}"'}
+            headers={
+                "Content-Disposition": f'attachment; filename="{os.path.basename(filename)}"'
+            },
         )
     except Exception as e:
         logger.error(f"Error downloading file: {str(e)}")
@@ -291,11 +381,15 @@ async def download(request: Request, filename: str):
 async def list_files(request: Request, prefix: str = ""):
     """List files in storage."""
     if not is_authenticated(request):
-        return JSONResponse({"files": [], "message": "Not authenticated"}, status_code=200)
+        return JSONResponse(
+            {"files": [], "message": "Not authenticated"}, status_code=200
+        )
 
     provider = get_current_provider(request)
     if not provider:
-        return JSONResponse({"files": [], "message": "Storage not configured"}, status_code=200)
+        return JSONResponse(
+            {"files": [], "message": "Storage not configured"}, status_code=200
+        )
 
     try:
         files = provider.list_files(prefix)
@@ -306,10 +400,12 @@ async def list_files(request: Request, prefix: str = ""):
             try:
                 file_name = file["name"]
                 file_size = file.get("size", 0)
-                is_folder_marker = (file_size == 0 and file.get("mime_type") is None) or file_name.endswith("/")
+                is_folder_marker = (
+                    file_size == 0 and file.get("mime_type") is None
+                ) or file_name.endswith("/")
 
                 if prefix and file_name.startswith(prefix):
-                    relative_path = file_name[len(prefix):]
+                    relative_path = file_name[len(prefix) :]
                 else:
                     relative_path = file_name
 
@@ -322,26 +418,32 @@ async def list_files(request: Request, prefix: str = ""):
 
                     if full_folder_path not in folders_seen:
                         folders_seen.add(full_folder_path)
-                        file_data.append({
-                            "name": full_folder_path,
-                            "size": 0,
-                            "preview_url": None,
-                            "mime_type": "folder",
-                            "type": "folder",
-                        })
+                        file_data.append(
+                            {
+                                "name": full_folder_path,
+                                "size": 0,
+                                "preview_url": None,
+                                "mime_type": "folder",
+                                "type": "folder",
+                            }
+                        )
                     continue
 
                 if is_folder_marker:
-                    folder_path = file_name if file_name.endswith("/") else file_name + "/"
+                    folder_path = (
+                        file_name if file_name.endswith("/") else file_name + "/"
+                    )
                     if folder_path not in folders_seen:
                         folders_seen.add(folder_path)
-                        file_data.append({
-                            "name": folder_path,
-                            "size": 0,
-                            "preview_url": None,
-                            "mime_type": "folder",
-                            "type": "folder",
-                        })
+                        file_data.append(
+                            {
+                                "name": folder_path,
+                                "size": 0,
+                                "preview_url": None,
+                                "mime_type": "folder",
+                                "type": "folder",
+                            }
+                        )
                 else:
                     mime_type, _ = mimetypes.guess_type(file_name)
                     preview_url = None
@@ -352,13 +454,15 @@ async def list_files(request: Request, prefix: str = ""):
                     ):
                         preview_url = provider.get_file_url(file_name)
 
-                    file_data.append({
-                        "name": file_name,
-                        "size": file_size,
-                        "preview_url": preview_url,
-                        "mime_type": mime_type,
-                        "type": "file",
-                    })
+                    file_data.append(
+                        {
+                            "name": file_name,
+                            "size": file_size,
+                            "preview_url": preview_url,
+                            "mime_type": mime_type,
+                            "type": "file",
+                        }
+                    )
             except Exception as e:
                 logger.warning(f"Error processing file {file.get('name')}: {str(e)}")
                 continue
@@ -367,7 +471,10 @@ async def list_files(request: Request, prefix: str = ""):
 
     except Exception as e:
         logger.error(f"Error listing files: {str(e)}")
-        return JSONResponse({"error": "An unexpected error occurred", "details": str(e)}, status_code=500)
+        return JSONResponse(
+            {"error": "An unexpected error occurred", "details": str(e)},
+            status_code=500,
+        )
 
 
 @router.delete("/delete/{filename:path}")
@@ -406,10 +513,16 @@ async def create_folder(request: Request):
             return JSONResponse({"error": "Folder name is required"}, status_code=400)
 
         if not hasattr(provider, "create_folder"):
-            return JSONResponse({"error": "Folder creation not supported by this storage provider"}, status_code=400)
+            return JSONResponse(
+                {"error": "Folder creation not supported by this storage provider"},
+                status_code=400,
+            )
 
         provider.create_folder(folder_name)
-        return JSONResponse({"message": "Folder created successfully", "folder_name": folder_name}, status_code=200)
+        return JSONResponse(
+            {"message": "Folder created successfully", "folder_name": folder_name},
+            status_code=200,
+        )
     except Exception as e:
         logger.error(f"Error creating folder: {str(e)}")
         return JSONResponse({"error": str(e)}, status_code=500)
@@ -433,16 +546,22 @@ async def delete_folder(request: Request):
             return JSONResponse({"error": "Folder name is required"}, status_code=400)
 
         if not hasattr(provider, "delete_folder"):
-            return JSONResponse({"error": "Folder deletion not supported by this storage provider"}, status_code=400)
+            return JSONResponse(
+                {"error": "Folder deletion not supported by this storage provider"},
+                status_code=400,
+            )
 
         provider.delete_folder(folder_name)
-        return JSONResponse({"message": "Folder deleted successfully", "folder_name": folder_name}, status_code=200)
+        return JSONResponse(
+            {"message": "Folder deleted successfully", "folder_name": folder_name},
+            status_code=200,
+        )
     except Exception as e:
         logger.error(f"Error deleting folder: {str(e)}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
-@router.get("/logout")
+@router.get("/logout", name="s3_explore.logout")
 async def logout(request: Request):
     """Clear session and logout."""
     request.session.clear()
@@ -465,7 +584,9 @@ async def share_file(request: Request, filename: str):
     try:
         url = provider.get_file_url(filename, expires_in=604800)
         mime_type, _ = mimetypes.guess_type(filename)
-        return JSONResponse({"url": url, "preview_url": url, "mime_type": mime_type}, status_code=200)
+        return JSONResponse(
+            {"url": url, "preview_url": url, "mime_type": mime_type}, status_code=200
+        )
     except Exception as e:
         logger.error(f"Error generating share link: {str(e)}")
         return JSONResponse({"error": str(e)}, status_code=500)

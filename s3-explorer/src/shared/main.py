@@ -9,14 +9,16 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import src.modules.s3_explore
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from src.modules.ingestion.routers import router as ingestion_router
 from src.modules.ingestion.wrapper import init_ingestion_wrapper, run_ingestion_pipeline
 from src.modules.s3_explore.web.router import router as s3_explore_router
 from src.shared._logging import get_logger
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 logger = get_logger(__name__)
@@ -40,18 +42,30 @@ async def lifespan(app: FastAPI):
 
 
 def create_app(app: FastAPI) -> FastAPI:
-    # Session middleware (required for login state)
-    secret_key = os.environ.get("SECRET_KEY", os.urandom(32).hex())
-    app.add_middleware(
-        SessionMiddleware,
-        secret_key=secret_key,
-        session_cookie="session",
-        max_age=86400,  # 24 hours
-        same_site="lax",
-        https_only=os.environ.get("PRODUCTION", "false").lower() == "true",
-    )
+    # 1. CSRF Middleware (Innermost)
+    async def csrf_protect(request: Request, call_next):
+        if request.method not in ("GET", "HEAD", "OPTIONS", "TRACE"):
+            if "/ingestion" in request.url.path:
+                return await call_next(request)
 
-    # CORS middleware
+            token_in_header = request.headers.get("X-CSRFToken")
+            token_in_session = request.session.get("csrf_token")
+
+            if (
+                not token_in_header
+                or not token_in_session
+                or token_in_header != token_in_session
+            ):
+                return JSONResponse(
+                    {"error": "CSRF token mismatch or missing"}, status_code=403
+                )
+
+        response = await call_next(request)
+        return response
+
+    app.add_middleware(BaseHTTPMiddleware, dispatch=csrf_protect)
+
+    # 2. CORS middleware
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
@@ -61,7 +75,18 @@ def create_app(app: FastAPI) -> FastAPI:
         ],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization"],
+        allow_headers=["Content-Type", "Authorization", "X-CSRFToken"],
+    )
+
+    # 3. Session middleware (Outermost)
+    secret_key = os.environ.get("SECRET_KEY", os.urandom(32).hex())
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=secret_key,
+        session_cookie="session",
+        max_age=86400,  # 24 hours
+        same_site="lax",
+        https_only=os.environ.get("PRODUCTION", "false").lower() == "true",
     )
 
     # Static files and templates
@@ -74,7 +99,6 @@ def create_app(app: FastAPI) -> FastAPI:
         name="static",
     )
 
-    # Store templates in app state for use in routes
     app.state.templates = Jinja2Templates(
         directory=str(s3_explore_web_dir / "templates")
     )
@@ -91,4 +115,3 @@ def create_app(app: FastAPI) -> FastAPI:
     app.include_router(ingestion_router)
 
     return app
-
