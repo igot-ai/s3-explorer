@@ -146,7 +146,9 @@ class AWSS3Provider(S3CompatibleProvider):
     - Region
     """
 
-    def __init__(self, access_key: str, secret_key: str, bucket: str, region: str):
+    def __init__(
+        self, access_key: str, secret_key: str, bucket: str, region: str, **kwargs
+    ):
         # Initialize s3fs filesystem for all operations including presigned URLs
         fs = s3fs.S3FileSystem(
             key=access_key, secret=secret_key, client_kwargs={"region_name": region}
@@ -165,7 +167,9 @@ class BackblazeB2Provider(StorageProvider):
     No region needed
     """
 
-    def __init__(self, application_key_id: str, application_key: str, bucket_name: str):
+    def __init__(
+        self, application_key_id: str, application_key: str, bucket_name: str, **kwargs
+    ):
         self.info = b2.InMemoryAccountInfo()
         self.b2_api = b2.B2Api(self.info)
         self.b2_api.authorize_account("production", application_key_id, application_key)
@@ -204,7 +208,9 @@ class WasabiProvider(S3CompatibleProvider):
     - Region (Wasabi specific regions)
     """
 
-    def __init__(self, access_key: str, secret_key: str, bucket: str, region: str):
+    def __init__(
+        self, access_key: str, secret_key: str, bucket: str, region: str, **kwargs
+    ):
         endpoint_url = f"https://s3.{region}.wasabisys.com"
 
         # Initialize s3fs filesystem for all operations
@@ -227,7 +233,9 @@ class GoogleCloudStorageProvider(StorageProvider):
     No region needed - handled by GCS
     """
 
-    def __init__(self, project_id: str, bucket_name: str, credentials_json: str):
+    def __init__(
+        self, project_id: str, bucket_name: str, credentials_json: str, **kwargs
+    ):
         try:
             # Parse the credentials JSON string into a dictionary
             if isinstance(credentials_json, str):
@@ -343,7 +351,9 @@ class DigitalOceanSpacesProvider(S3CompatibleProvider):
     - Region (DO specific: nyc3, ams3, sgp1, etc.)
     """
 
-    def __init__(self, access_key: str, secret_key: str, bucket: str, region: str):
+    def __init__(
+        self, access_key: str, secret_key: str, bucket: str, region: str, **kwargs
+    ):
         try:
             logger.debug(
                 f"Initializing DigitalOcean Spaces provider with bucket: {bucket}, region: {region}"
@@ -394,6 +404,7 @@ class CloudflareR2Provider(S3CompatibleProvider):
         secret_key: str,
         bucket: str,
         region: Optional[str] = None,
+        **kwargs,
     ):
         endpoint_url = f"https://{account_id}.r2.cloudflarestorage.com"
 
@@ -426,7 +437,12 @@ class HetznerStorageProvider(S3CompatibleProvider):
     """
 
     def __init__(
-        self, access_key: str, secret_key: str, bucket: str, region: str = "nbg1"
+        self,
+        access_key: str,
+        secret_key: str,
+        bucket: str,
+        region: str = "nbg1",
+        **kwargs,
     ):
         try:
             logger.debug(
