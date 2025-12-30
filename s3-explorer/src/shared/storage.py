@@ -37,6 +37,14 @@ class StorageProvider(ABC):
     def get_file_url(self, filename: str, expires_in: int = 3600) -> str:
         pass
 
+    @abstractmethod
+    def create_folder(self, folder_name: str) -> None:
+        pass
+
+    @abstractmethod
+    def delete_folder(self, folder_name: str) -> None:
+        pass
+
 
 class S3CompatibleProvider(StorageProvider):
     """Base class for S3-compatible storage providers using s3fs
@@ -198,6 +206,24 @@ class BackblazeB2Provider(StorageProvider):
             filename, valid_duration_in_seconds=expires_in
         )
 
+    def create_folder(self, folder_name: str) -> None:
+        """Create a folder in Backblaze B2.
+        B2 doesn't have a concept of folders, so we create a 0-byte file with a trailing slash.
+        """
+        if not folder_name.endswith("/"):
+            folder_name += "/"
+        self.bucket.upload_stream(io.BytesIO(b""), folder_name)
+
+    def delete_folder(self, folder_name: str) -> None:
+        """Delete a folder and its contents in Backblaze B2."""
+        if not folder_name.endswith("/"):
+            folder_name += "/"
+        for f in self.bucket.list_file_names(folder_name):
+            if f.file_name.startswith(folder_name):
+                # Delete all versions of the file
+                for version in self.bucket.list_file_versions(f.file_name):
+                    self.bucket.delete_file_version(version.id_, version.file_name)
+
 
 class WasabiProvider(S3CompatibleProvider):
     """Wasabi storage provider (S3 compatible) using s3fs
@@ -340,6 +366,28 @@ class GoogleCloudStorageProvider(StorageProvider):
         except Exception as e:
             print(f"Error generating signed URL: {str(e)}")
             raise ValueError(f"Error generating signed URL: {str(e)}")
+
+    def create_folder(self, folder_name: str) -> None:
+        """Create a folder in GCS by creating a 0-byte blob with a trailing slash."""
+        try:
+            if not folder_name.endswith("/"):
+                folder_name += "/"
+            blob = self.bucket.blob(folder_name)
+            blob.upload_from_string("", content_type="application/x-directory")
+        except Exception as e:
+            print(f"Error creating folder: {str(e)}")
+            raise ValueError(f"Error creating folder: {str(e)}")
+
+    def delete_folder(self, folder_name: str) -> None:
+        """Delete a folder and its contents in GCS."""
+        try:
+            if not folder_name.endswith("/"):
+                folder_name += "/"
+            blobs = self.bucket.list_blobs(prefix=folder_name)
+            self.bucket.delete_blobs(blobs)
+        except Exception as e:
+            print(f"Error deleting folder: {str(e)}")
+            raise ValueError(f"Error deleting folder: {str(e)}")
 
 
 class DigitalOceanSpacesProvider(S3CompatibleProvider):

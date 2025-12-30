@@ -45,20 +45,40 @@ def create_app(app: FastAPI) -> FastAPI:
     # 1. CSRF Middleware (Innermost)
     async def csrf_protect(request: Request, call_next):
         if request.method not in ("GET", "HEAD", "OPTIONS", "TRACE"):
-            if "/ingestion" in request.url.path:
+            if "/ingestion" in request.url.path or request.headers.get("Authorization"):
+                return await call_next(request)
+
+            if request.url.path == "/health":
                 return await call_next(request)
 
             token_in_header = request.headers.get("X-CSRFToken")
-            token_in_session = request.session.get("csrf_token")
+            try:
+                token_in_session = request.session.get("csrf_token")
+            except Exception as e:
+                logger.error(f"Error accessing session for CSRF check: {e}")
+                token_in_session = None
 
-            if (
-                not token_in_header
-                or not token_in_session
-                or token_in_header != token_in_session
-            ):
-                return JSONResponse(
-                    {"error": "CSRF token mismatch or missing"}, status_code=403
+            if not token_in_session:
+                logger.warning(
+                    f"CSRF check failed: No token in session for {request.url.path}"
                 )
+                return JSONResponse(
+                    {"error": "CSRF token missing in session"}, status_code=403
+                )
+
+            if not token_in_header:
+                logger.warning(
+                    f"CSRF check failed: No X-CSRFToken header for {request.url.path}"
+                )
+                return JSONResponse(
+                    {"error": "CSRF token missing in header"}, status_code=403
+                )
+
+            if token_in_header != token_in_session:
+                logger.warning(
+                    f"CSRF token mismatch for {request.url.path}: header={token_in_header[:8]}... session={token_in_session[:8]}..."
+                )
+                return JSONResponse({"error": "CSRF token mismatch"}, status_code=403)
 
         response = await call_next(request)
         return response
@@ -79,7 +99,12 @@ def create_app(app: FastAPI) -> FastAPI:
     )
 
     # 3. Session middleware (Outermost)
-    secret_key = os.environ.get("SECRET_KEY", os.urandom(32).hex())
+    secret_key = os.environ.get("SECRET_KEY")
+    if not secret_key:
+        secret_key = "dev-secret-key-change-in-production"
+        if os.environ.get("PRODUCTION", "false").lower() == "true":
+            logger.warning("Using insecure fallback SECRET_KEY in production!")
+
     app.add_middleware(
         SessionMiddleware,
         secret_key=secret_key,

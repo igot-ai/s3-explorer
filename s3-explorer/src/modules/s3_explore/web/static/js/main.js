@@ -181,11 +181,8 @@ class FileExplorer {
         formData.append('folder', this.currentPath);
 
         try {
-            const response = await fetch(this.buildUrl('/upload'), {
+            const response = await this.authenticatedFetch(this.buildUrl('/upload'), {
                 method: 'POST',
-                headers: {
-                    'X-CSRFToken': this.csrfToken
-                },
                 body: formData
             });
 
@@ -312,9 +309,9 @@ class FileExplorer {
         files.forEach(file => {
             // Detect folders: type='folder', mime_type='folder', size=0 with null mime_type, or ends with '/'
             const isFolder = file.type === 'folder' ||
-                           file.mime_type === 'folder' ||
-                           file.name.endsWith('/') ||
-                           (file.size === 0 && (file.mime_type === null || file.mime_type === undefined));
+                file.mime_type === 'folder' ||
+                file.name.endsWith('/') ||
+                (file.size === 0 && (file.mime_type === null || file.mime_type === undefined));
 
             console.log('Processing file:', file.name, 'isFolder:', isFolder, 'type:', file.type, 'mime_type:', file.mime_type, 'size:', file.size);
 
@@ -382,9 +379,9 @@ class FileExplorer {
         files.forEach(file => {
             // Detect folders: type='folder', mime_type='folder', size=0 with null mime_type, or ends with '/'
             const isFolder = file.type === 'folder' ||
-                           file.mime_type === 'folder' ||
-                           file.name.endsWith('/') ||
-                           (file.size === 0 && (file.mime_type === null || file.mime_type === undefined));
+                file.mime_type === 'folder' ||
+                file.name.endsWith('/') ||
+                (file.size === 0 && (file.mime_type === null || file.mime_type === undefined));
 
             // Remove the current folder prefix
             let relativePath = file.name;
@@ -668,9 +665,9 @@ class FileExplorer {
 
         this.fileList.innerHTML = allItems.map(item => {
             const isFolder = item.type === 'folder' ||
-                           item.mime_type === 'folder' ||
-                           item.name.endsWith('/') ||
-                           (item.size === 0 && (item.mime_type === null || item.mime_type === undefined));
+                item.mime_type === 'folder' ||
+                item.name.endsWith('/') ||
+                (item.size === 0 && (item.mime_type === null || item.mime_type === undefined));
             const displayName = isFolder ? item.name.replace(/\/$/, '').split('/').pop() : item.name.split('/').pop();
             const fullPath = item.name;
 
@@ -944,11 +941,8 @@ class FileExplorer {
         if (!confirm(`Are you sure you want to delete "${path}"?`)) return;
 
         try {
-            const response = await fetch(this.buildUrl(`/delete/${encodeURIComponent(path)}`), {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRFToken': this.csrfToken
-                }
+            const response = await this.authenticatedFetch(this.buildUrl(`/delete/${encodeURIComponent(path)}`), {
+                method: 'DELETE'
             });
 
             if (response.ok) {
@@ -993,11 +987,10 @@ class FileExplorer {
         if (!folderName) return;
 
         try {
-            const response = await fetch(this.buildUrl('/create_folder'), {
+            const response = await this.authenticatedFetch(this.buildUrl('/create_folder'), {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': this.csrfToken
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     folder_name: this.currentPath + folderName + '/'
@@ -1051,6 +1044,48 @@ class FileExplorer {
             this.clearSelection();
             this.closePreviewModal();
         }
+    }
+
+    async refreshCsrfToken() {
+        try {
+            const response = await fetch(this.buildUrl('/get-csrf-token'));
+            const data = await response.json();
+            if (data.csrf_token) {
+                this.csrfToken = data.csrf_token;
+                // Update meta tag for consistency
+                const meta = document.querySelector('meta[name="csrf-token"]');
+                if (meta) meta.setAttribute('content', data.csrf_token);
+                return true;
+            }
+        } catch (error) {
+            console.error('Error fetching CSRF token:', error);
+        }
+        return false;
+    }
+
+    // Wrap fetch to handle CSRF token refresh
+    async authenticatedFetch(url, options = {}) {
+        if (!options.headers) options.headers = {};
+        if (options.method && options.method !== 'GET') {
+            options.headers['X-CSRFToken'] = this.csrfToken;
+        }
+
+        let response = await fetch(url, options);
+
+        // If CSRF token mismatch/missing, refresh and retry once
+        if (response.status === 403) {
+            const data = await response.clone().json().catch(() => ({}));
+            if (data.error && data.error.toLowerCase().includes('csrf')) {
+                console.warn('CSRF error detected, refreshing token and retrying...');
+                const refreshed = await this.refreshCsrfToken();
+                if (refreshed) {
+                    options.headers['X-CSRFToken'] = this.csrfToken;
+                    response = await fetch(url, options);
+                }
+            }
+        }
+
+        return response;
     }
 
     // Utilities
