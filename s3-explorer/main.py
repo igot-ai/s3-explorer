@@ -10,16 +10,14 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
-# Ensure refactored src/ and src/modules/ are importable when running from repo root.
+# Ensure src/ is importable when running from repo root without installation.
 _PROJECT_ROOT = Path(__file__).resolve().parent
 _SRC_DIR = _PROJECT_ROOT / "src"
-_MODULES_DIR = _SRC_DIR / "modules"
-for _p in (str(_SRC_DIR), str(_MODULES_DIR)):
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
+if str(_SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(_SRC_DIR))
 
-from src.shared.config.s3_config import s3_config
-from src.shared.main import create_app
+from dataroutine.shared.config.s3_config import s3_config
+from dataroutine.shared.main import create_app
 
 
 def check_aws_credentials():

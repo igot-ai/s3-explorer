@@ -3,8 +3,12 @@ name = "dataroutine"
 version = "0.1.0"
 description = ""
 authors = ["ntnhan21@clc.fitus.edu.vn"]
-readme = "README.md"
-package-mode = false
+readme = "Readme.md"
+include = [
+    "src/dataroutine/modules/s3_explore/web/static/**/*",
+    "src/dataroutine/modules/s3_explore/web/templates/**/*"
+]
+packages = [{include = "dataroutine", from = "src"}]
 
 [tool.poetry.dependencies]
 python = ">=3.11.0,<3.14"

@@ -1,34 +1,20 @@
-from setuptools import setup
+from setuptools import setup, find_packages
+from pathlib import Path
+
+this_directory = Path(__file__).parent
+long_description = (this_directory / "Readme.md").read_text(encoding="utf-8")
 
 setup(
     name="dataroutine",
     version="0.1.0",
     description="Cloud Storage Manager - Data Ingestion Pipeline",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     author="ntnhan21@clc.fitus.edu.vn",
-    packages=[
-        "dataroutine",
-        "dataroutine.modules",
-        "dataroutine.modules.ingestion",
-        "dataroutine.modules.ingestion.core",
-        "dataroutine.modules.ingestion.core.classifiers",
-        "dataroutine.modules.ingestion.core.connectors",
-        "dataroutine.modules.ingestion.core.handlers",
-        "dataroutine.modules.ingestion.core.processors",
-        "dataroutine.modules.ingestion.core.readers",
-        "dataroutine.modules.ingestion.core.readers.extractor",
-        "dataroutine.modules.ingestion.routers",
-        "dataroutine.modules.ingestion.schemas",
-        "dataroutine.modules.ingestion.services",
-        "dataroutine.modules.ingestion.temporal",
-        "dataroutine.modules.ingestion.tests",
-        "dataroutine.modules.ingestion.utils",
-        "dataroutine.modules.s3_explore",
-        "dataroutine.modules.s3_explore.web",
-        "dataroutine.shared",
-        "dataroutine.shared.config",
-    ],
-    package_dir={"dataroutine": "src"},  # Map dataroutine package từ src/
+    packages=find_packages(where="src"),
+    package_dir={"": "src"},
     include_package_data=True,
+    python_requires=">=3.11",
     package_data={
         "dataroutine.modules.s3_explore.web": [
             "static/css/*.css",

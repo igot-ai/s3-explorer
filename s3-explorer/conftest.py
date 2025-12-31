@@ -1,11 +1,6 @@
 """Pytest configuration.
 
-This repo keeps importable packages under:
-- `src/` (e.g., `shared`)
-- `src/modules/` (e.g., `ingestion`, `s3_explore`)
-
-When running tests directly (without installing as a package), ensure those
-directories are on `sys.path` so imports work during test collection.
+Ensures the 'src' directory is in the python path for tests.
 """
 
 from __future__ import annotations
@@ -22,7 +17,5 @@ def _add_to_syspath(path: Path) -> None:
 
 ROOT = Path(__file__).resolve().parent
 SRC = ROOT / "src"
-MODULES = SRC / "modules"
 
 _add_to_syspath(SRC)
-_add_to_syspath(MODULES)
