@@ -85,18 +85,6 @@ def create_app(app: FastAPI) -> FastAPI:
 
     app.add_middleware(BaseHTTPMiddleware, dispatch=csrf_protect)
 
-    # 2. CORS middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000",
-            "http://localhost:3001",
-            "http://127.0.0.1:3000",
-        ],
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization", "X-CSRFToken"],
-    )
 
     # 3. Session middleware (Outermost)
     secret_key = os.environ.get("SECRET_KEY")
@@ -104,15 +92,6 @@ def create_app(app: FastAPI) -> FastAPI:
         secret_key = "dev-secret-key-change-in-production"
         if os.environ.get("PRODUCTION", "false").lower() == "true":
             logger.warning("Using insecure fallback SECRET_KEY in production!")
-
-    app.add_middleware(
-        SessionMiddleware,
-        secret_key=secret_key,
-        session_cookie="session",
-        max_age=86400,  # 24 hours
-        same_site="lax",
-        https_only=os.environ.get("PRODUCTION", "false").lower() == "true",
-    )
 
     # Static files and templates
     s3_explore_root = Path(dataroutine.modules.s3_explore.__file__).parent
