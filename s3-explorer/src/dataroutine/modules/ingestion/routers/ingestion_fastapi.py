@@ -68,7 +68,6 @@ def run_ingestion(
             source_path=source_path,
             workspace_id=config.workspace_id,
             project_id=config.project_id,
-            auth_token=config.auth_token,
             catalogs=catalogs,
             task_id=config.task_id,
             storage_provider=config.storage_provider,

@@ -47,7 +47,6 @@ class TestActivityHelpers:
             source_path="test/",
             workspace_id="ws",
             project_id="proj",
-            auth_token="token",
             catalogs=[{"id": "cat1", "instruction": "Test"}],
             api_base_url="http://api.example.com",
             storage_provider="aws",
@@ -77,7 +76,6 @@ class TestActivityHelpers:
             source_path="test/",
             workspace_id="ws",
             project_id="proj",
-            auth_token="token",
             catalogs=[
                 {"id": "cat1", "instruction": "Test", "fetch_all_metadata": False}
             ],
@@ -139,7 +137,6 @@ class TestRunIngestionPipelineActivity:
             source_path="test/",
             workspace_id="ws",
             project_id="proj",
-            auth_token="token",
             catalogs=[{"id": "cat1", "instruction": "Test"}],
             task_id="task-123",
             api_base_url="http://api.example.com",
@@ -179,7 +176,6 @@ class TestRunIngestionPipelineActivity:
             source_path="test/",
             workspace_id="ws",
             project_id="proj",
-            auth_token="token",
             catalogs=[{"id": "cat1", "instruction": "Test"}],
             task_id="task-123",
         )
@@ -198,7 +194,6 @@ class TestRunIngestionPipelineActivity:
             source_path="test/",
             workspace_id="ws",
             project_id="proj",
-            auth_token="token",
             catalogs=[{"id": "cat1", "instruction": "Test"}],
             task_id="",  # Empty task_id
         )

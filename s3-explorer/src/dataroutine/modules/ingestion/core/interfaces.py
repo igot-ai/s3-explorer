@@ -24,7 +24,6 @@ class IngestionClientProtocol(Protocol):
         source_path: str,
         workspace_id: str,
         project_id: str,
-        auth_token: str,
         catalogs: List[Dict[str, Any]],
         task_id: Optional[str] = None,
         storage_provider: str = "aws",

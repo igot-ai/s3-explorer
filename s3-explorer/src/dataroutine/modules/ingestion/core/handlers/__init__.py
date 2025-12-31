@@ -4,5 +4,8 @@ from dataroutine.modules.ingestion.core.handlers.base import (
     APICollectionHandler,
     CollectionHandler,
 )
+from src.modules.ingestion.core.handlers.collection_handler_manager import (
+    CollectionHandlerManager,
+)
 
-__all__ = ["CollectionHandler", "APICollectionHandler"]
+__all__ = ["CollectionHandler", "APICollectionHandler", "CollectionHandlerManager"]
