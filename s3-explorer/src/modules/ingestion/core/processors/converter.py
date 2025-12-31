@@ -1,5 +1,6 @@
 """Document converter implementations."""
 
+import io
 import os
 import shutil
 import subprocess
@@ -146,11 +147,98 @@ class DocxToPdfConverter(FileProcessor):
         except subprocess.TimeoutExpired:
             error_msg = "Conversion timeout (exceeded 5 minutes)"
             logger.error(error_msg)
+            # Try fallback conversion
+            return self._fallback_convert(file_context, output_dir, error_msg)
+        except Exception as e:
+            error_msg = f"Error during conversion: {str(e)}"
+            logger.error(error_msg)
+            # Try fallback conversion
+            return self._fallback_convert(file_context, output_dir, error_msg)
+
+    def _fallback_convert(
+        self, file_context: FileContext, output_dir: Path, original_error: str
+    ) -> List[FileContext]:
+        """Fallback conversion using markitdown + fpdf2.
+
+        Args:
+            file_context: File to convert
+            output_dir: Directory to store output PDF
+            original_error: The original error message from LibreOffice
+
+        Returns:
+            List with single converted FileContext
+        """
+        try:
+            from fpdf import FPDF
+            from markitdown import MarkItDown
+
+            input_path = Path(file_context.local_path)
+            output_filename = input_path.stem + ".pdf"
+            output_path = output_dir / output_filename
+
+            logger.info(f"Falling back to markitdown+fpdf2 for {input_path.name}")
+
+            # Extract content using markitdown
+            md = MarkItDown()
+            result = md.convert(str(input_path))
+            markdown_content = result.text_content
+
+            if not markdown_content or not markdown_content.strip():
+                error_msg = f"No content extracted from {input_path.name}"
+                logger.error(error_msg)
+                file_context.status = FileStatus.FAILED
+                file_context.error_message = error_msg
+                return [file_context]
+
+            # Create PDF from markdown content
+            pdf = FPDF()
+            pdf.set_auto_page_break(auto=True, margin=15)
+            pdf.add_page()
+            pdf.set_font("Helvetica", size=11)
+
+            for line in markdown_content.split("\n"):
+                safe_text = line.encode("latin-1", "replace").decode("latin-1")
+                if line.startswith("# "):
+                    pdf.set_font("Helvetica", "B", 16)
+                    pdf.multi_cell(0, 10, safe_text[2:])
+                    pdf.set_font("Helvetica", size=11)
+                elif line.startswith("## "):
+                    pdf.set_font("Helvetica", "B", 14)
+                    pdf.multi_cell(0, 8, safe_text[3:])
+                    pdf.set_font("Helvetica", size=11)
+                elif line.strip() == "":
+                    pdf.ln(3)
+                else:
+                    pdf.multi_cell(0, 6, safe_text)
+
+            # Write PDF to file
+            pdf_buffer = io.BytesIO()
+            pdf.output(pdf_buffer)
+            with open(output_path, "wb") as f:
+                f.write(pdf_buffer.getvalue())
+
+            source_path = Path(file_context.source_path)
+            new_source_path = str(source_path.with_suffix(".pdf"))
+
+            converted_context = FileContext(
+                source_path=new_source_path,
+                local_path=str(output_path),
+                file_type="pdf",
+                status=FileStatus.CONVERTED,
+                parent_folder=file_context.parent_folder,
+            )
+
+            logger.info(f"Successfully converted {input_path.name} using fallback")
+            return [converted_context]
+
+        except ImportError as ie:
+            error_msg = f"Fallback failed (missing dependency: {ie}). Original error: {original_error}"
+            logger.error(error_msg)
             file_context.status = FileStatus.FAILED
             file_context.error_message = error_msg
             return [file_context]
         except Exception as e:
-            error_msg = f"Error during conversion: {str(e)}"
+            error_msg = f"Fallback conversion also failed: {str(e)}. Original error: {original_error}"
             logger.error(error_msg)
             file_context.status = FileStatus.FAILED
             file_context.error_message = error_msg

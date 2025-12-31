@@ -58,9 +58,11 @@ def _create_pipeline(params: IngestionJobParams) -> IngestionPipeline:
     source_connector = S3SourceConnector(storage_provider)
     processors = []
     converter = DocxToPdfConverter()
+    processors.append(converter)
     if converter.is_libreoffice_available():
-        processors.append(converter)
         logger.info("Using LibreOffice for DOCX conversion")
+    else:
+        logger.info("LibreOffice not available - will use markitdown+fpdf2 fallback for DOCX")
     archive_extractor = ArchiveExtractor()
     if archive_extractor.available:
         processors.append(archive_extractor)
