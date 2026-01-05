@@ -1,6 +1,12 @@
-import pytest
 from unittest.mock import MagicMock
-from dataroutine.modules.ingestion.wrapper import IngestionWrapper, init_ingestion_wrapper, get_ingestion_wrapper, reset_ingestion_wrapper
+
+import pytest
+from dataroutine.modules.ingestion.wrapper import (
+    get_ingestion_wrapper,
+    init_ingestion_wrapper,
+    reset_ingestion_wrapper,
+)
+
 
 class TestIngestionWrapper:
     def setup_method(self):
@@ -29,44 +35,42 @@ class TestIngestionWrapper:
         mock_response.success = True
         mock_response.error = None
         mock_client.return_value = mock_response
-        
+
         init_ingestion_wrapper(mock_client)
         wrapper = get_ingestion_wrapper()
-        
+
         # Act
         result = wrapper.trigger_ingestion(
             source_path="test/path",
             workspace_id="ws-1",
             project_id="proj-1",
-            auth_token="token",
-            catalogs=[{"id": "cat-1", "instruction": "instr"}]
+            catalogs=[{"id": "cat-1", "instruction": "instr"}],
         )
-        
+
         # Assert
         assert result.task_id == "test-task-id"
         assert result.success is True
         assert result.status == "started"
         assert result.error is None
-        
+
         mock_client.assert_called_once()
 
     def test_trigger_ingestion_failure(self):
         # Arrange
         mock_client = MagicMock()
         mock_client.side_effect = Exception("RPC Error")
-        
+
         init_ingestion_wrapper(mock_client)
         wrapper = get_ingestion_wrapper()
-        
+
         # Act
         result = wrapper.trigger_ingestion(
             source_path="test/path",
             workspace_id="ws-1",
             project_id="proj-1",
-            auth_token="token",
-            catalogs=[]
+            catalogs=[],
         )
-        
+
         # Assert
         assert result.success is False
         assert result.status == "failed"

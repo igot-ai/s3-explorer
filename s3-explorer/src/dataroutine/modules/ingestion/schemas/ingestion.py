@@ -97,12 +97,6 @@ class IngestionConfigSchema(Schema):
         },
     )
 
-    # API settings (uses env API_BASE_URL if not provided)
-    api_base_url = fields.Str(
-        load_default=None,
-        metadata={"description": "API base URL for collection handler"},
-    )
-
     # Storage provider settings
     storage_provider = fields.Str(
         load_default="aws",
@@ -110,7 +104,7 @@ class IngestionConfigSchema(Schema):
     )
     storage_credentials = fields.Nested(StorageCredentialsSchema, load_default=dict)
 
-    # API Handler settings (required)
+    # API Handler settings
     workspace_id = fields.Str(
         load_default=None,
         metadata={"description": "Workspace ID for API handler (required)"},
@@ -118,10 +112,6 @@ class IngestionConfigSchema(Schema):
     project_id = fields.Str(
         load_default=None,
         metadata={"description": "Project ID for API handler (required)"},
-    )
-    auth_token = fields.Str(
-        load_default=None,
-        metadata={"description": "Auth token for API handler (required)"},
     )
 
 

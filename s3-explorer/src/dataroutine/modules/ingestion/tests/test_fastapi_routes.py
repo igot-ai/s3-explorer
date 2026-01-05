@@ -1,23 +1,24 @@
 """Unit tests for FastAPI ingestion routes."""
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-from fastapi.testclient import TestClient
-from fastapi import FastAPI
+from unittest.mock import Mock, patch
+
 from dataroutine.modules.ingestion.routers.ingestion_fastapi import router
 from dataroutine.modules.ingestion.wrapper import IngestionTaskResult
-
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 # Create test app
 app = FastAPI()
-app.include_router(router)
+
+app.include_router(router, prefix="/api/v1")
 
 
 class TestRunIngestionEndpoint:
     """Test POST /api/v1/ingestion/run endpoint."""
-    
-    @patch("dataroutine.modules.ingestion.routers.ingestion_fastapi.get_ingestion_wrapper")
-    @patch("dataroutine.modules.ingestion.routers.ingestion_fastapi.AUTH_TOKEN", "test-token")
+
+    @patch(
+        "dataroutine.modules.ingestion.routers.ingestion_fastapi.get_ingestion_wrapper"
+    )
     def test_run_ingestion_success(self, mock_get_wrapper):
         """Test successful ingestion trigger."""
         mock_wrapper = Mock()
@@ -28,7 +29,7 @@ class TestRunIngestionEndpoint:
             error=None,
         )
         mock_get_wrapper.return_value = mock_wrapper
-        
+
         client = TestClient(app)
         response = client.post(
             "/api/v1/ingestion/run",
@@ -37,42 +38,22 @@ class TestRunIngestionEndpoint:
                     "source_path": "test/",
                     "workspace_id": "ws-123",
                     "project_id": "proj-456",
-                    "auth_token": "token-789",
                 },
                 "catalogs": [
                     {"id": "cat1", "instruction": "Test", "fetch_all_metadata": False}
                 ],
             },
-            headers={"Authorization": "Bearer test-token"},
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
         assert data["task_id"] == "task-123"
         assert data["status"] == "started"
-    
-    @patch("dataroutine.modules.ingestion.routers.ingestion_fastapi.AUTH_TOKEN", "test-token")
-    def test_run_ingestion_missing_auth(self, _):
-        """Test ingestion trigger without authentication."""
-        client = TestClient(app)
-        response = client.post(
-            "/api/v1/ingestion/run",
-            json={
-                "config": {
-                    "source_path": "test/",
-                    "workspace_id": "ws-123",
-                    "project_id": "proj-456",
-                    "auth_token": "token-789",
-                },
-                "catalogs": [{"id": "cat1", "instruction": "Test"}],
-            },
-        )
-        
-        assert response.status_code == 401
-    
-    @patch("dataroutine.modules.ingestion.routers.ingestion_fastapi.get_ingestion_wrapper")
-    @patch("dataroutine.modules.ingestion.routers.ingestion_fastapi.AUTH_TOKEN", "test-token")
+
+    @patch(
+        "dataroutine.modules.ingestion.routers.ingestion_fastapi.get_ingestion_wrapper"
+    )
     def test_run_ingestion_missing_required_fields(self, mock_get_wrapper):
         """Test ingestion trigger with missing required fields."""
         client = TestClient(app)
@@ -81,13 +62,12 @@ class TestRunIngestionEndpoint:
             json={
                 "config": {
                     "source_path": "test/",
-                    # Missing workspace_id, project_id, auth_token
+                    # Missing workspace_id, project_id
                 },
                 "catalogs": [{"id": "cat1", "instruction": "Test"}],
             },
-            headers={"Authorization": "Bearer test-token"},
         )
-        
+
         assert response.status_code == 400
         data = response.json()
         assert "Missing required API handler settings" in data["detail"]["message"]
@@ -95,12 +75,12 @@ class TestRunIngestionEndpoint:
 
 class TestHealthCheckEndpoint:
     """Test GET /api/v1/ingestion/health endpoint."""
-    
+
     def test_health_check(self):
         """Test health check endpoint."""
         client = TestClient(app)
         response = client.get("/api/v1/ingestion/health")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "healthy"
@@ -109,19 +89,20 @@ class TestHealthCheckEndpoint:
 
 class TestListPrefixesEndpoint:
     """Test POST /api/v1/ingestion/list-prefixes endpoint."""
-    
+
     @patch("dataroutine.modules.ingestion.routers.ingestion_fastapi.S3SourceConnector")
-    @patch("dataroutine.modules.ingestion.routers.ingestion_fastapi.get_storage_provider")
-    @patch("dataroutine.modules.ingestion.routers.ingestion_fastapi.AUTH_TOKEN", "test-token")
+    @patch(
+        "dataroutine.modules.ingestion.routers.ingestion_fastapi.get_storage_provider"
+    )
     def test_list_prefixes_success(self, mock_get_provider, mock_connector_class):
         """Test successful prefix listing."""
         mock_provider = Mock()
         mock_get_provider.return_value = mock_provider
-        
+
         mock_connector = Mock()
         mock_connector.list_folders.return_value = ["folder1/", "folder2/"]
         mock_connector_class.return_value = mock_connector
-        
+
         client = TestClient(app)
         response = client.post(
             "/api/v1/ingestion/list-prefixes",
@@ -134,17 +115,15 @@ class TestListPrefixesEndpoint:
                 },
                 "prefix": "test/",
             },
-            headers={"Authorization": "Bearer test-token"},
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
         assert "folder1/" in data["prefixes"]
         assert "folder2/" in data["prefixes"]
-    
-    @patch("dataroutine.modules.ingestion.routers.ingestion_fastapi.AUTH_TOKEN", "test-token")
-    def test_list_prefixes_missing_credentials(self, _):
+
+    def test_list_prefixes_missing_credentials(self):
         """Test prefix listing without credentials."""
         client = TestClient(app)
         response = client.post(
@@ -153,10 +132,8 @@ class TestListPrefixesEndpoint:
                 "storage_provider": "aws",
                 "storage_credentials": {},
             },
-            headers={"Authorization": "Bearer test-token"},
         )
-        
+
         assert response.status_code == 400
         data = response.json()
         assert "Storage credentials required" in data["detail"]["message"]
-

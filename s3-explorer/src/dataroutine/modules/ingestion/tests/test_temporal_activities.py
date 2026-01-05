@@ -7,13 +7,17 @@ the activity logic in isolation.
 
 from unittest.mock import Mock, patch
 
+import pytest
 from dataroutine.modules.ingestion.temporal.activities import (
     _build_job_config,
     _build_result,
     _create_pipeline,
     run_ingestion_pipeline_activity,
 )
-from dataroutine.modules.ingestion.temporal.models import IngestionJobParams, IngestionResult
+from dataroutine.modules.ingestion.temporal.models import (
+    IngestionJobParams,
+    IngestionResult,
+)
 
 
 class TestActivityHelpers:
@@ -27,12 +31,10 @@ class TestActivityHelpers:
     @patch("dataroutine.modules.ingestion.temporal.activities.FileProcessorChain")
     @patch("dataroutine.modules.ingestion.temporal.activities.PyMuPDFReader")
     @patch("dataroutine.modules.ingestion.temporal.activities.LLMClassifier")
-    @patch("dataroutine.modules.ingestion.temporal.activities.DataCollectionAPIHandler")
     @patch("dataroutine.modules.ingestion.temporal.activities.IngestionPipeline")
     def test_create_pipeline(
         self,
         mock_pipeline,
-        mock_handler,
         mock_classifier,
         mock_reader,
         mock_chain,
@@ -48,7 +50,6 @@ class TestActivityHelpers:
             workspace_id="ws",
             project_id="proj",
             catalogs=[{"id": "cat1", "instruction": "Test"}],
-            api_base_url="http://api.example.com",
             storage_provider="aws",
             storage_credentials={
                 "access_key": "key",
@@ -123,13 +124,14 @@ class TestActivityHelpers:
         assert len(result.folders) == 1
 
 
+@pytest.mark.asyncio
 class TestRunIngestionPipelineActivity:
     """Test the main ingestion pipeline activity."""
 
     @patch("dataroutine.modules.ingestion.temporal.activities._create_pipeline")
     @patch("dataroutine.modules.ingestion.temporal.activities._build_job_config")
     @patch("dataroutine.modules.ingestion.temporal.activities._build_result")
-    def test_run_ingestion_pipeline_activity_success(
+    async def test_run_ingestion_pipeline_activity_success(
         self, mock_build_result, mock_build_config, mock_create_pipeline
     ):
         """Test successful pipeline execution."""
@@ -139,7 +141,6 @@ class TestRunIngestionPipelineActivity:
             project_id="proj",
             catalogs=[{"id": "cat1", "instruction": "Test"}],
             task_id="task-123",
-            api_base_url="http://api.example.com",
         )
 
         mock_pipeline = Mock()
@@ -163,14 +164,14 @@ class TestRunIngestionPipelineActivity:
         )
         mock_build_result.return_value = mock_result
 
-        result_dict = run_ingestion_pipeline_activity(params)
+        result_dict = await run_ingestion_pipeline_activity(params)
 
         assert result_dict["success"] is True
         assert result_dict["task_id"] == "task-123"
         mock_pipeline.run.assert_called_once()
 
     @patch("dataroutine.modules.ingestion.temporal.activities._create_pipeline")
-    def test_run_ingestion_pipeline_activity_failure(self, mock_create_pipeline):
+    async def test_run_ingestion_pipeline_activity_failure(self, mock_create_pipeline):
         """Test pipeline execution failure."""
         params = IngestionJobParams(
             source_path="test/",
@@ -182,13 +183,13 @@ class TestRunIngestionPipelineActivity:
 
         mock_create_pipeline.side_effect = ValueError("Invalid configuration")
 
-        result_dict = run_ingestion_pipeline_activity(params)
+        result_dict = await run_ingestion_pipeline_activity(params)
 
         assert result_dict["success"] is False
         assert result_dict["task_id"] == "task-123"
         assert "error" in result_dict
 
-    def test_run_ingestion_pipeline_activity_auto_task_id(self):
+    async def test_run_ingestion_pipeline_activity_auto_task_id(self):
         """Test that task_id is auto-generated if not provided."""
         params = IngestionJobParams(
             source_path="test/",
@@ -201,7 +202,9 @@ class TestRunIngestionPipelineActivity:
         with patch(
             "dataroutine.modules.ingestion.temporal.activities._create_pipeline"
         ) as mock_create:
-            with patch("dataroutine.modules.ingestion.temporal.activities._build_job_config"):
+            with patch(
+                "dataroutine.modules.ingestion.temporal.activities._build_job_config"
+            ):
                 with patch(
                     "dataroutine.modules.ingestion.temporal.activities._build_result"
                 ) as mock_result:
@@ -224,7 +227,7 @@ class TestRunIngestionPipelineActivity:
                         failed=0,
                     )
 
-                    result_dict = run_ingestion_pipeline_activity(params)
+                    result_dict = await run_ingestion_pipeline_activity(params)
 
                     # Task ID should be generated (UUID format)
                     assert "task_id" in result_dict

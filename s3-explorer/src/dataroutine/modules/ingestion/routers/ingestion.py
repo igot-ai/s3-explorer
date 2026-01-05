@@ -1,9 +1,9 @@
-from flask import Blueprint, jsonify, request
-from marshmallow import ValidationError
 from dataroutine.modules.ingestion.core.connectors import get_storage_provider
 from dataroutine.modules.ingestion.core.connectors.s3_connector import S3SourceConnector
 from dataroutine.modules.ingestion.schemas.ingestion import ingestion_request_schema
 from dataroutine.shared._logging import get_logger
+from flask import Blueprint, jsonify, request
+from marshmallow import ValidationError
 
 logger = get_logger(__name__)
 
@@ -54,16 +54,13 @@ def run_ingestion():
 
         workspace_id = config_data.get("workspace_id")
         project_id = config_data.get("project_id")
-        auth_token = config_data.get("auth_token")
-        if not workspace_id or not project_id or not auth_token:
+        if not workspace_id or not project_id:
             return (
                 jsonify(
                     {
                         "success": False,
                         "message": "Missing required API handler settings",
-                        "errors": [
-                            "workspace_id, project_id, and auth_token are required"
-                        ],
+                        "errors": ["workspace_id, project_id are required"],
                     }
                 ),
                 400,
@@ -90,7 +87,6 @@ def run_ingestion():
             source_path=source_path,
             workspace_id=workspace_id,
             project_id=project_id,
-            auth_token=auth_token,
             catalogs=catalogs,
             task_id=config_data.get("task_id") or "",
             storage_provider=config_data.get("storage_provider", "aws"),
@@ -99,7 +95,6 @@ def run_ingestion():
             pages_to_read=config_data.get("pages_to_read", 3),
             reader_type=config_data.get("reader_type"),
             temp_dir=config_data.get("temp_dir"),
-            api_base_url=config_data.get("api_base_url"),
             user_id=config_data.get("user_id"),
             callback_workflow=config_data.get("callback_workflow"),
             callback_params=config_data.get("callback_params"),

@@ -3,6 +3,7 @@
 import tempfile
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from dataroutine.modules.ingestion.core.models import FileContext, FileStatus
@@ -205,8 +206,10 @@ class TestArchiveExtractor:
 class TestDocxToPdfConverter:
     """Test DocxToPdfConverter."""
 
-    def test_initialization(self):
+    @patch("dataroutine.modules.ingestion.core.processors.converter.shutil.which")
+    def test_initialization(self, mock_which):
         """Test converter initialization."""
+        mock_which.return_value = None  # Simulate default behavior
         converter = DocxToPdfConverter()
         assert converter.libreoffice_path == "soffice"
 

@@ -65,7 +65,6 @@ result = wrapper.trigger_ingestion(
     source_path="raw-documents/",
     workspace_id="ws-123",
     project_id="proj-456",
-    auth_token="token-789",
     catalogs=[{"id": "cat-1", "instruction": "Legal docs", "fetch_all_metadata": False}],
 )
 ```
@@ -83,7 +82,6 @@ task_id = wrapper.trigger_task(
     source_path="raw-documents/",
     workspace_id="ws-123",
     project_id="proj-456",
-    auth_token="token-789",
     catalog_config={"id": "cat-1", "instruction": "Legal docs", "fetch_all_metadata": False},
 )
 ```
@@ -153,9 +151,9 @@ def test_ingestion():
     # Setup
     mock_client = Mock(spec=IngestionClientProtocol)
     init_ingestion_wrapper(mock_client)
-    
+
     # Test...
-    
+
     # Teardown
     reset_ingestion_wrapper()
 ```
@@ -185,11 +183,3 @@ If you have code using the old auto-import pattern:
 3. **Testability**: Easy to inject mock clients for testing
 4. **Clear Error Messages**: Developers get helpful guidance when setup is incorrect
 5. **Single Source of Truth**: All initialization happens in bootstrap.py
-
-
-
-
-
-
-
-

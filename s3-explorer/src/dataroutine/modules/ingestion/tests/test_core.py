@@ -65,6 +65,7 @@ class TestIngestionPipeline:
     def test_pipeline_run_empty_folders(self, mock_components, sample_config):
         """Test pipeline with no folders."""
         mock_components["source_connector"].list_folders.return_value = []
+        mock_components["source_connector"].walk_folder.return_value = []
 
         pipeline = IngestionPipeline(**mock_components)
         result = pipeline.run(sample_config)
@@ -163,7 +164,8 @@ class TestIngestionPipeline:
         sample_config.catalogs[0].fetch_all_metadata = True
 
         mock_components["source_connector"].list_folders.return_value = ["folder1/"]
-        mock_components["source_connector"].walk_folder.return_value = []
+        file_ctx = FileContext(source_path="folder1/test.pdf", file_type="pdf")
+        mock_components["source_connector"].walk_folder.return_value = [file_ctx]
 
         pipeline = IngestionPipeline(**mock_components)
         result = pipeline.run(sample_config)
@@ -197,7 +199,7 @@ class TestIngestionPipeline:
             "extracted_metadata": {"field1": "value1"},
         }
 
-        pipeline._extract_data(pf, sample_config, folder_ctx)
+        pipeline._extract_and_upload(pf, sample_config, folder_ctx)
 
         assert pf.status == FileStatus.UPLOADED
         assert getattr(pf, "asset_id") == "asset-1"

@@ -11,7 +11,7 @@ dependencies with igotapi.
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from dataroutine.modules.ingestion.env import API_BASE_URL, READER_TYPE, TEMP_DIR
+from dataroutine.modules.ingestion.env import READER_TYPE, TEMP_DIR
 from dataroutine.shared._logging import get_logger
 
 if TYPE_CHECKING:
@@ -79,7 +79,6 @@ class IngestionWrapper:
         pages_to_read: int = 3,
         reader_type: str = READER_TYPE,
         temp_dir: Optional[str] = TEMP_DIR,
-        api_base_url: Optional[str] = API_BASE_URL,
         user_id: Optional[str] = None,
     ) -> IngestionTaskResult:
         """Trigger an ingestion pipeline job.
@@ -88,7 +87,6 @@ class IngestionWrapper:
             source_path: S3 path to process (e.g., "raw-documents/")
             workspace_id: Workspace ID for data collection API
             project_id: Project ID for data collection API
-            auth_token: Authentication token for API calls
             catalogs: List of catalog configurations, each with:
                 - id: Catalog ID
                 - instruction: Classification instruction for LLM
@@ -100,7 +98,6 @@ class IngestionWrapper:
             pages_to_read: Number of pages to read for classification
             reader_type: Document reader type (pymupdf, pdfplumber, markitdown)
             temp_dir: Temporary directory for file processing
-            api_base_url: Base URL for data collection API
             user_id: Optional user ID who initiated the job
 
         Returns:
@@ -121,7 +118,6 @@ class IngestionWrapper:
                 pages_to_read=pages_to_read,
                 reader_type=reader_type,
                 temp_dir=temp_dir,
-                api_base_url=api_base_url,
                 user_id=user_id,
             )
 
@@ -228,7 +224,6 @@ async def _run_ingestion_pipeline_async(
     pages_to_read: int = 3,
     reader_type: str = READER_TYPE,
     temp_dir: Optional[str] = TEMP_DIR,
-    api_base_url: Optional[str] = None,
     user_id: Optional[str] = None,
     **kwargs,
 ) -> "IngestionTaskResult":
@@ -260,7 +255,6 @@ async def _run_ingestion_pipeline_async(
             pages_to_read=pages_to_read,
             reader_type=reader_type,
             temp_dir=temp_dir,
-            api_base_url=api_base_url,
             user_id=user_id,
         )
 

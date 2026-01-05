@@ -6,7 +6,6 @@ the actual pipeline execution.
 """
 
 import logging
-import os
 import uuid
 from typing import Any, Dict
 
@@ -27,10 +26,17 @@ from dataroutine.modules.ingestion.core.processors.extractor import (
     ArchiveExtractor,
     SimpleZipExtractor,
 )
-from dataroutine.modules.ingestion.core.readers.markitdown_reader import MarkitdownReader
-from dataroutine.modules.ingestion.core.readers.pdfplumber_reader import PDFPlumberReader
+from dataroutine.modules.ingestion.core.readers.markitdown_reader import (
+    MarkitdownReader,
+)
+from dataroutine.modules.ingestion.core.readers.pdfplumber_reader import (
+    PDFPlumberReader,
+)
 from dataroutine.modules.ingestion.core.readers.pymupdf_reader import PyMuPDFReader
-from dataroutine.modules.ingestion.temporal.models import IngestionJobParams, IngestionResult
+from dataroutine.modules.ingestion.temporal.models import (
+    IngestionJobParams,
+    IngestionResult,
+)
 from temporalio import activity
 
 logger = logging.getLogger(__name__)
@@ -82,7 +88,6 @@ def _create_pipeline(params: IngestionJobParams) -> IngestionPipeline:
 
     collection_handler_class = CollectionHandlerManager.get_prototype()
     collection_handler = collection_handler_class(
-        base_url=params.api_base_url or os.getenv("API_BASE_URL"),
         workspace_id=params.workspace_id,
         project_id=params.project_id,
     )

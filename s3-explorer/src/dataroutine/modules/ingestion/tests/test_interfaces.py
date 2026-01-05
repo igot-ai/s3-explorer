@@ -17,7 +17,10 @@ from dataroutine.modules.ingestion.core.models import (
     FileStatus,
     FolderContext,
 )
-from dataroutine.modules.ingestion.core.processors.base import FileProcessor, FileProcessorChain
+from dataroutine.modules.ingestion.core.processors.base import (
+    FileProcessor,
+    FileProcessorChain,
+)
 from dataroutine.modules.ingestion.core.readers.base import DocumentReader
 
 # Mock implementations for testing
@@ -49,7 +52,10 @@ class MockFileProcessor(FileProcessor):
     """Mock implementation of FileProcessor for testing."""
 
     def can_process(self, file_context: FileContext) -> bool:
-        return file_context.source_path.endswith(".docx")
+        return (
+            file_context.source_path.endswith(".docx")
+            and file_context.file_type != "pdf"
+        )
 
     def process(self, file_context: FileContext, output_dir: Path) -> List[FileContext]:
         converted = FileContext(
@@ -97,6 +103,9 @@ class MockClassifier(Classifier):
             confidence=4,
             reason="Mock classification",
         )
+
+    def extract_metadata(self, file_content: str, catalog: Catalog) -> Dict[str, Any]:
+        return {"mock_key": "mock_value"}
 
 
 class MockCollectionHandler(CollectionHandler):

@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from dataroutine.modules.ingestion.core.models import Catalog
-from dataroutine.modules.ingestion.env import API_BASE_URL, READER_TYPE, TEMP_DIR
+from dataroutine.modules.ingestion.env import READER_TYPE, TEMP_DIR
 
 
 @dataclass
@@ -79,7 +79,6 @@ class IngestionJobParams:
         pages_to_read: Number of pages to read for classification
         reader_type: Document reader type (pymupdf, pdfplumber, markitdown)
         temp_dir: Temporary directory for file processing
-        api_base_url: Base URL for data collection API
         user_id: Optional user ID who initiated the job
     """
 
@@ -94,7 +93,6 @@ class IngestionJobParams:
     pages_to_read: int = 3
     temp_dir: Optional[str] = TEMP_DIR
     reader_type: Optional[str] = READER_TYPE
-    api_base_url: Optional[str] = API_BASE_URL
     user_id: Optional[str] = None
 
     def __post_init__(self):
@@ -102,8 +100,6 @@ class IngestionJobParams:
             self.reader_type = READER_TYPE
         if self.temp_dir is None:
             self.temp_dir = TEMP_DIR
-        if self.api_base_url is None:
-            self.api_base_url = API_BASE_URL
 
     def get_catalogs(self) -> List[Catalog]:
         """Convert catalog dictionaries to Catalog objects."""
@@ -123,7 +119,6 @@ class IngestionJobParams:
             "pages_to_read": self.pages_to_read,
             "reader_type": self.reader_type,
             "temp_dir": self.temp_dir,
-            "api_base_url": self.api_base_url,
             "user_id": self.user_id,
         }
 
@@ -142,7 +137,6 @@ class IngestionJobParams:
             pages_to_read=data.get("pages_to_read", 3),
             reader_type=data.get("reader_type", READER_TYPE),
             temp_dir=data.get("temp_dir"),
-            api_base_url=data.get("api_base_url"),
             user_id=data.get("user_id"),
         )
 

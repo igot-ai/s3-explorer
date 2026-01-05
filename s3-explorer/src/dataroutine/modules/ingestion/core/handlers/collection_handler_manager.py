@@ -1,7 +1,7 @@
 import sys
 from typing import Optional
 
-from src.modules.ingestion.core.handlers.base import CollectionHandler
+from dataroutine.modules.ingestion.core.handlers.base import CollectionHandler
 
 
 class CollectionHandlerManager:

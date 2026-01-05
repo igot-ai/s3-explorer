@@ -1,8 +1,6 @@
 """FastAPI routes for ingestion pipeline."""
 
 
-from fastapi import APIRouter, HTTPException
-from fastapi.security import HTTPBearer
 from dataroutine.modules.ingestion.core.connectors import get_storage_provider
 from dataroutine.modules.ingestion.core.connectors.s3_connector import S3SourceConnector
 from dataroutine.modules.ingestion.schemas.fastapi_models import (
@@ -13,6 +11,8 @@ from dataroutine.modules.ingestion.schemas.fastapi_models import (
 )
 from dataroutine.modules.ingestion.wrapper import get_ingestion_wrapper
 from dataroutine.shared._logging import get_logger
+from fastapi import APIRouter, HTTPException
+from fastapi.security import HTTPBearer
 
 logger = get_logger(__name__)
 
@@ -34,13 +34,13 @@ def run_ingestion(
         config = request.config
 
         # Validate required fields
-        if not config.workspace_id or not config.project_id or not config.auth_token:
+        if not config.workspace_id or not config.project_id:
             raise HTTPException(
                 status_code=400,
                 detail={
                     "success": False,
                     "message": "Missing required API handler settings",
-                    "errors": ["workspace_id, project_id, and auth_token are required"],
+                    "errors": ["workspace_id, project_id are required"],
                 },
             )
 
@@ -76,7 +76,6 @@ def run_ingestion(
             pages_to_read=config.pages_to_read,
             reader_type=config.reader_type,
             temp_dir=config.temp_dir,
-            api_base_url=config.api_base_url,
             user_id=config.user_id,
         )
 
