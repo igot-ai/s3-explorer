@@ -50,35 +50,35 @@ def create_app(app: FastAPI) -> FastAPI:
 
             if request.url.path == "/health":
                 return await call_next(request)
+            if "/dataroutine" in request.url.path:
+                token_in_header = request.headers.get("X-CSRFToken")
+                try:
+                    token_in_session = request.session.get("csrf_token")
+                except Exception as e:
+                    logger.error(f"Error accessing session for CSRF check: {e}")
+                    token_in_session = None
 
-            token_in_header = request.headers.get("X-CSRFToken")
-            try:
-                token_in_session = request.session.get("csrf_token")
-            except Exception as e:
-                logger.error(f"Error accessing session for CSRF check: {e}")
-                token_in_session = None
+                if not token_in_session:
+                    logger.warning(
+                        f"CSRF check failed: No token in session for {request.url.path}"
+                    )
+                    return JSONResponse(
+                        {"error": "CSRF token missing in session"}, status_code=403
+                    )
 
-            if not token_in_session:
-                logger.warning(
-                    f"CSRF check failed: No token in session for {request.url.path}"
-                )
-                return JSONResponse(
-                    {"error": "CSRF token missing in session"}, status_code=403
-                )
+                if not token_in_header:
+                    logger.warning(
+                        f"CSRF check failed: No X-CSRFToken header for {request.url.path}"
+                    )
+                    return JSONResponse(
+                        {"error": "CSRF token missing in header"}, status_code=403
+                    )
 
-            if not token_in_header:
-                logger.warning(
-                    f"CSRF check failed: No X-CSRFToken header for {request.url.path}"
-                )
-                return JSONResponse(
-                    {"error": "CSRF token missing in header"}, status_code=403
-                )
-
-            if token_in_header != token_in_session:
-                logger.warning(
-                    f"CSRF token mismatch for {request.url.path}: header={token_in_header[:8]}... session={token_in_session[:8]}..."
-                )
-                return JSONResponse({"error": "CSRF token mismatch"}, status_code=403)
+                if token_in_header != token_in_session:
+                    logger.warning(
+                        f"CSRF token mismatch for {request.url.path}: header={token_in_header[:8]}... session={token_in_session[:8]}..."
+                    )
+                    return JSONResponse({"error": "CSRF token mismatch"}, status_code=403)
 
         response = await call_next(request)
         return response
