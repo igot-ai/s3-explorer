@@ -297,16 +297,20 @@ class IngestionPipeline:
         if catalog.fetch_all_metadata:
             aggregated = folder_ctx.aggregated_metadata.get(catalog.id, {})
 
+            # Priority 1: Aggregated metadata from other files in the same folder
+            for key, values in aggregated.items():
+                if values and isinstance(values, list):
+                    non_empty_values = [v for v in values if v]
+                    if non_empty_values:
+                        column_static_data[key] = non_empty_values[0]
+
+            # Priority 2: File's own metadata (only if not already provided by aggregated data)
             for key, value in pf.metadata.items():
-                if value:
+                if value and (
+                    key not in column_static_data or not column_static_data[key]
+                ):
                     column_static_data[key] = value
 
-            for key, values in aggregated.items():
-                if key not in column_static_data or not column_static_data[key]:
-                    if values and isinstance(values, list):
-                        non_empty_values = [v for v in values if v]
-                        if non_empty_values:
-                            column_static_data[key] = non_empty_values[0]
             pf.metadata.update(column_static_data)
         else:
             column_static_data = pf.metadata.copy()
@@ -356,28 +360,26 @@ class IngestionPipeline:
             folder_ctx: Folder context to aggregate
             catalogs: List of catalogs
         """
-        # Aggregate files by catalog
         folder_ctx.aggregate_by_catalog()
 
-        # Get all successfully uploaded files (from any catalog)
-        all_successful_files = [f for f in folder_ctx.files if f.is_successful()]
-
-        # For each catalog with fetch_all_metadata=True, aggregate metadata from ALL files
+        normal_catalog_ids = {
+            c.id for c in catalogs if not getattr(c, "fetch_all_metadata", False)
+        }
         for catalog in catalogs:
             if catalog.fetch_all_metadata:
-                # Merge metadata from ALL successful files (not just same catalog)
                 aggregated = {}
-                for file_ctx in all_successful_files:
-                    for key, value in file_ctx.metadata.items():
-                        if value:  # Only aggregate non-empty values
-                            if key not in aggregated:
-                                aggregated[key] = []
-                            if value not in aggregated[key]:
-                                aggregated[key].append(value)
+                for file_ctx in folder_ctx.files:
+                    if file_ctx.classified_catalog_id in normal_catalog_ids:
+                        for key, value in file_ctx.metadata.items():
+                            if value:
+                                if key not in aggregated:
+                                    aggregated[key] = []
+                                if value not in aggregated[key]:
+                                    aggregated[key].append(value)
 
                 folder_ctx.aggregated_metadata[catalog.id] = aggregated
                 logger.debug(
-                    f"Aggregated metadata for catalog {catalog.id} from {len(all_successful_files)} files: {list(aggregated.keys())}"
+                    f"Aggregated metadata for catalog {catalog.id} from {len(folder_ctx.files)} files: {list(aggregated.keys())}"
                 )
 
     def _build_result(
