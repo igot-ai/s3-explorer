@@ -65,6 +65,7 @@ class TestIngestionPipeline:
     def test_pipeline_run_empty_folders(self, mock_components, sample_config):
         """Test pipeline with no folders."""
         mock_components["source_connector"].list_folders.return_value = []
+        mock_components["source_connector"].walk_folder.return_value = []
 
         pipeline = IngestionPipeline(**mock_components)
         result = pipeline.run(sample_config)
@@ -163,7 +164,18 @@ class TestIngestionPipeline:
         sample_config.catalogs[0].fetch_all_metadata = True
 
         mock_components["source_connector"].list_folders.return_value = ["folder1/"]
-        mock_components["source_connector"].walk_folder.return_value = []
+        file_ctx = FileContext(source_path="folder1/test.pdf", file_type="pdf")
+        mock_components["source_connector"].walk_folder.return_value = [file_ctx]
+        mock_components["source_connector"].download_file.return_value = io.BytesIO(
+            b"pdf bytes"
+        )
+        mock_components["processor_chain"].process.side_effect = lambda fc, _td: [fc]
+        mock_components["document_reader"].can_read.return_value = True
+        mock_components["document_reader"].read_pages.return_value = "Test content"
+        mock_components["classifier"].classify.return_value = ClassificationResult(
+            category_id="test-catalog", confidence=3, reason="ok"
+        )
+        mock_components["collection_handler"].upload.return_value = "asset-123"
 
         pipeline = IngestionPipeline(**mock_components)
         result = pipeline.run(sample_config)
@@ -172,7 +184,7 @@ class TestIngestionPipeline:
         folder_ctx = result.folder_contexts[0]
         assert isinstance(folder_ctx, FolderContext)
 
-    def test_extract_data_upload_dict_updates_metadata(
+    def test_extract_and_upload_dict_updates_metadata(
         self, mock_components, sample_config, tmp_path
     ):
         """Test handler dict upload result updates asset_id and file metadata."""
@@ -189,15 +201,17 @@ class TestIngestionPipeline:
             status=FileStatus.CLASSIFIED,
             classified_catalog_id="test-catalog",
             metadata={"existing": "x"},
+            extracted_text="some text",
         )
         folder_ctx = FolderContext(folder_path="folder1/")
 
+        mock_components["classifier"].extract_metadata.return_value = {}
         mock_components["collection_handler"].upload.return_value = {
             "asset_id": "asset-1",
             "extracted_metadata": {"field1": "value1"},
         }
 
-        pipeline._extract_data(pf, sample_config, folder_ctx)
+        pipeline._extract_and_upload(pf, sample_config, folder_ctx)
 
         assert pf.status == FileStatus.UPLOADED
         assert getattr(pf, "asset_id") == "asset-1"

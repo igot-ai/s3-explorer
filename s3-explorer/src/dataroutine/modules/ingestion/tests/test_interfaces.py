@@ -49,7 +49,7 @@ class MockFileProcessor(FileProcessor):
     """Mock implementation of FileProcessor for testing."""
 
     def can_process(self, file_context: FileContext) -> bool:
-        return file_context.source_path.endswith(".docx")
+        return file_context.source_path.endswith(".docx") and file_context.status == FileStatus.PENDING
 
     def process(self, file_context: FileContext, output_dir: Path) -> List[FileContext]:
         converted = FileContext(
@@ -97,6 +97,9 @@ class MockClassifier(Classifier):
             confidence=4,
             reason="Mock classification",
         )
+
+    def extract_metadata(self, text: str, catalog: Catalog) -> Dict[str, Any]:
+        return {"mock_field": "mock_value"}
 
 
 class MockCollectionHandler(CollectionHandler):

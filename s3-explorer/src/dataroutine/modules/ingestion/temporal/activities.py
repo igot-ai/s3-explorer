@@ -13,6 +13,7 @@ from typing import Any, Dict
 from dataroutine.modules.ingestion.core.classifiers import ClassifierManager
 from dataroutine.modules.ingestion.core.connectors import get_storage_provider
 from dataroutine.modules.ingestion.core.connectors.s3_connector import S3SourceConnector
+from dataroutine.modules.ingestion.core.handlers import CollectionHandler
 from dataroutine.modules.ingestion.core.handlers.api_handler import DataCollectionAPIHandler
 from dataroutine.modules.ingestion.core.models import (
     Catalog,
@@ -36,7 +37,7 @@ from temporalio import activity
 logger = logging.getLogger(__name__)
 
 
-def _create_pipeline(params: IngestionJobParams) -> IngestionPipeline:
+def _create_pipeline(params: IngestionJobParams, collection_handler: CollectionHandler = None) -> IngestionPipeline:
     """Create and configure the ingestion pipeline from workflow parameters.
 
     This factory function creates all pipeline components with proper configuration.
@@ -80,12 +81,13 @@ def _create_pipeline(params: IngestionJobParams) -> IngestionPipeline:
         document_reader = MarkitdownReader()
     classifier = ClassifierManager.get_instance().classifier
 
-    collection_handler = DataCollectionAPIHandler(
-        base_url=params.api_base_url or os.getenv("API_BASE_URL"),
-        workspace_id=params.workspace_id,
-        project_id=params.project_id,
-        auth_token=params.auth_token,
-    )
+    if collection_handler is None:
+        collection_handler = DataCollectionAPIHandler(
+            base_url=params.api_base_url or os.getenv("API_BASE_URL"),
+            workspace_id=params.workspace_id,
+            project_id=params.project_id,
+            auth_token=params.auth_token,
+        )
 
     def on_file_processed(file_ctx: FileContext):  # Progress callback
         status_emoji = "✅" if file_ctx.is_successful() else "❌"

@@ -1,6 +1,6 @@
 import io
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List
+from typing import Any, List
 
 import dspy
 import pymupdf
@@ -63,6 +63,9 @@ class MarkitdownFileExtractor:
     The extracted content is returned as DocumentSchema objects with appropriate metadata.
     """
 
+    def __init__(self, model: Any = None):
+        self.model = model
+
     def _combine_page_images(
         self, doc, page_numbers: list[int], dpi: int = 144
     ) -> io.BytesIO:
@@ -116,27 +119,34 @@ class MarkitdownFileExtractor:
             LLM_MODEL_ID, LLM_PROVIDER
         )
 
-        try:
-            dspy_model = dspy.LM(
-                model=formatted_model_name,
-                api_key=LLM_API_KEY or None,
-                api_base=LLM_API_BASE_URL or None,
-                api_version=LLM_API_VERSION or None,
-                max_tokens=LLM_MAX_TOKEN,
-                cache=False,
-            )
-        except Exception as model_error:
-            logger.error(
-                "Failed to initialize MarkItDown LLM client for model %s: %s",
-                formatted_model_name,
-                model_error,
-            )
-            raise
+        if self.model:
+            llm_model = self.model
+            # Use model's internal name if available, otherwise default to env-based name
+            model_name = getattr(self.model, "model", formatted_model_name)
+        else:
+            try:
+                llm_model = dspy.LM(
+                    model=formatted_model_name,
+                    api_key=LLM_API_KEY or None,
+                    api_base=LLM_API_BASE_URL or None,
+                    api_version=LLM_API_VERSION or None,
+                    max_tokens=LLM_MAX_TOKEN,
+                    cache=False,
+                )
+            except Exception as model_error:
+                logger.error(
+                    "Failed to initialize MarkItDown LLM client for model %s: %s",
+                    formatted_model_name,
+                    model_error,
+                )
+                raise
+            model_name = formatted_model_name
+
         prompt = FILE_EXTRACTION
 
         # Create MarkItDown instance with configured model
-        mock_client = MockOpenAIClient(dspy_model=dspy_model, api_base=LLM_API_BASE_URL)
-        markitdown = MarkItDown(llm_client=mock_client, llm_model=formatted_model_name)
+        mock_client = MockOpenAIClient(model=llm_model)
+        markitdown = MarkItDown(llm_client=mock_client, llm_model=model_name)
 
         return markitdown, prompt
 

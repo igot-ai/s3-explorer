@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 import pymupdf
 from dataroutine.modules.ingestion.core.readers.base import DocumentReader
@@ -13,8 +14,8 @@ class MarkitdownReader(DocumentReader):
     Supports PDF files via MarkitdownFileExtractor.
     """
 
-    def __init__(self):
-        self._extractor = MarkitdownFileExtractor()
+    def __init__(self, model: Any = None):
+        self._extractor = MarkitdownFileExtractor(model=model)
 
     def can_read(self, file_path: Path) -> bool:
         """Check if this reader can handle the given file type."""
