@@ -16,8 +16,6 @@ from dataroutine.modules.ingestion.env import (
     LLM_PROVIDER,
 )
 from dataroutine.modules.ingestion.utils.constant import (
-    IMAGE_EXTENSIONS,
-    MARKITDOWN_IMAGE_EXTENSIONS,
     MAX_WORKERS,
     PDF_EXTENSIONS,
     SUPPORTED_DOCUMENT_EXTENSIONS,
@@ -25,7 +23,8 @@ from dataroutine.modules.ingestion.utils.constant import (
 from dataroutine.modules.ingestion.utils.file_helper import FileHelper
 from dataroutine.modules.ingestion.utils.llm_helper import LLMHelper
 from dataroutine.shared._logging import get_logger
-
+from markitdown.converters import *
+from .audio_converter import AudioLLMConverter
 logger = get_logger(__name__)
 
 FILE_EXTRACTION = """
@@ -146,9 +145,22 @@ class MarkitdownFileExtractor:
 
         # Create MarkItDown instance with configured model
         mock_client = MockOpenAIClient(model=llm_model)
-        markitdown = MarkItDown(llm_client=mock_client, llm_model=model_name)
+        _markitdown = MarkItDown(llm_client=mock_client, llm_model=model_name, enable_builtins=True)
 
-        return markitdown, prompt
+        _markitdown.register_converter(DocxConverter())
+        _markitdown.register_converter(XlsxConverter())
+        _markitdown.register_converter(XlsConverter())
+        _markitdown.register_converter(PptxConverter())
+        _markitdown.register_converter(AudioLLMConverter())
+        _markitdown.register_converter(ImageConverter())
+        _markitdown.register_converter(IpynbConverter())
+        _markitdown.register_converter(PdfConverter())
+        _markitdown.register_converter(OutlookMsgConverter())
+        _markitdown.register_converter(EpubConverter())
+        _markitdown.register_converter(CsvConverter())
+        
+
+        return _markitdown, prompt
 
     def read_pages(self, file_path: str, max_pages: int = 3) -> str:
         """Extract text from the first N pages of a PDF file.
@@ -224,43 +236,6 @@ class MarkitdownFileExtractor:
             logger.error(f"Error extracting content from {file_path}: {e}")
             return ""
 
-    def _get_image_content(self, file_path: str, md: MarkItDown, prompt: str) -> str:
-        """Convert an image file to PNG and extract text content.
-
-        Args:
-            file_path: Path to the image file
-            md: Pre-initialized MarkItDown instance
-            prompt: Prompt to use for extraction
-
-        Returns:
-            Extracted text content from the image
-        """
-        file_extension = FileHelper.get_file_extension(file_path)
-
-        try:
-            # Convert to PNG in memory if not already PNG, JPG, or JPEG
-            if file_extension not in MARKITDOWN_IMAGE_EXTENSIONS:
-                with Image.open(file_path) as img:
-                    if img.mode in ("RGBA", "LA", "P"):
-                        img = img.convert("RGB")
-                    img_stream = io.BytesIO()
-                    img.save(img_stream, "PNG")
-                    img_stream.seek(0)
-            else:
-                with open(file_path, "rb") as f:
-                    img_stream = io.BytesIO(f.read())
-
-            result = md.convert(
-                img_stream,
-                file_extension="png",
-                llm_prompt=prompt,
-            )
-            return result.text_content
-
-        except Exception as e:
-            logger.error(f"Error extracting content from image {file_path}: {e}")
-            raise ValueError(f"Failed to extract content from image {file_path}: {e}")
-
     def extract_content_from_file(
         self, file_path: str, window_size: int = 3, overlap: int = 1
     ) -> str:
@@ -302,9 +277,7 @@ class MarkitdownFileExtractor:
         md, prompt = self._choose_markitdown_model()
 
         # Extract based on file type
-        if file_extension in IMAGE_EXTENSIONS:
-            return self._get_image_content(file_path, md, prompt)
-        elif file_extension in PDF_EXTENSIONS:
+        if file_extension in PDF_EXTENSIONS:
             return self._extract_pdf_content(
                 file_path, window_size, overlap, md, prompt
             )

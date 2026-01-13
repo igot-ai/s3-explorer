@@ -6,12 +6,13 @@ from dataroutine.modules.ingestion.core.readers.base import DocumentReader
 from dataroutine.modules.ingestion.core.readers.extractor.markitdown_file_extraction import (
     MarkitdownFileExtractor,
 )
+from dataroutine.modules.ingestion.utils.constant import SUPPORTED_DOCUMENT_EXTENSIONS
 
 
 class MarkitdownReader(DocumentReader):
     """Document reader that uses MarkItDown for text extraction.
 
-    Supports PDF files via MarkitdownFileExtractor.
+    Supports various file formats including PDF, images, and audio via MarkitdownFileExtractor.
     """
 
     def __init__(self, model: Any = None):
@@ -19,8 +20,7 @@ class MarkitdownReader(DocumentReader):
 
     def can_read(self, file_path: Path) -> bool:
         """Check if this reader can handle the given file type."""
-        extension = Path(file_path).suffix.lower()
-        return extension in self.get_supported_formats()
+        return True # Always return True as markitdown will handle validation
 
     def get_supported_formats(self) -> list[str]:
         """Get list of supported file formats.
@@ -28,19 +28,26 @@ class MarkitdownReader(DocumentReader):
         Returns:
             List of extensions
         """
-        return [".pdf"]
+        return list(SUPPORTED_DOCUMENT_EXTENSIONS)
 
     def get_page_count(self, file_path: Path) -> int:
         """Get total number of pages in the document."""
-        doc = pymupdf.open(str(file_path))
-        page_count = len(doc)
-        doc.close()
-        return page_count
+        extension = Path(file_path).suffix.lower()
+        if extension == ".pdf":
+            try:
+                doc = pymupdf.open(str(file_path))
+                page_count = len(doc)
+                doc.close()
+                return page_count
+            except Exception:
+                return 0
+        return 1 # Return 1 for non-PDF files
 
     def read_pages(self, file_path: Path, max_pages: int = 3) -> str:
         """Extract text from the first N pages of the document."""
-        if not self.can_read(file_path):
-            return ""
+        extension = Path(file_path).suffix.lower()
+        if extension != ".pdf":
+            return "" # read_pages is only for PDF-specific sliding window extraction
         return self._extractor.read_pages(str(file_path), max_pages)
 
     def read_full_document(self, file_path: Path) -> str:
