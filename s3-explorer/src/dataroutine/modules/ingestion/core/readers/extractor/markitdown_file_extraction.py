@@ -29,24 +29,24 @@ logger = get_logger(__name__)
 
 FILE_EXTRACTION = """
 ## Instruction
-Bạn là một công cụ OCR thông minh.
-Nhiệm vụ của bạn: **Trích xuất chính xác toàn bộ nội dung trong ảnh** thành văn bản.
+You are an intelligent OCR tool.
+Your task: **Accurately extract all content from the image** into text.
 
-### Yêu cầu
-- Giữ nguyên **ngôn ngữ gốc** (không dịch, không chuyển đổi).
-- Giữ nguyên **định dạng văn bản**:
-  - Xuống dòng
-  - Khoảng trắng
-  - Dấu câu
-  - Bullet/Number list
-  - Bảng biểu (dùng Markdown table nếu có thể)
-  - Ký tự đặc biệt
-- Không thêm, không bớt, không suy đoán nội dung.
-- Nếu có phần không đọc được, ghi rõ `[không rõ]`.
+### Requirements
+- Preserve the **original language** (do not translate or convert).
+- Preserve the **text formatting**:
+  - Line breaks
+  - Whitespace
+  - Punctuation
+  - Bullet/Number lists
+  - Tables (use Markdown table format if possible)
+  - Special characters
+- Do not add, omit, or speculate on content.
+- If any part is unreadable, mark it as `[unclear]`.
 
 ### Output
-- Trả về **nội dung trích xuất dạng Markdown**.
-- Không thêm giải thích hoặc mô tả ngoài văn bản.
+- Return the **extracted content in Markdown format**.
+- Do not add any explanations or descriptions outside of the text.
 """
 
 

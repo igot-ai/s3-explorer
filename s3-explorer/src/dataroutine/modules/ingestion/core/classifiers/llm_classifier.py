@@ -20,44 +20,44 @@ logger = get_logger(__name__)
 
 
 class FileClassification(dspy.Signature):
-    """Phân loại nội dung tệp vào danh mục phù hợp nhất dựa trên nội dung và tên file."""
+    """Classify file content into the most appropriate category based on its content and file name."""
 
     # Input fields
     categories = dspy.InputField(
-        desc="Danh sách danh mục hợp lệ để chọn từ (JSON format)"
+        desc="List of valid categories to choose from (JSON format)"
     )
-    category_ids = dspy.InputField(desc="Danh sách ID danh mục hợp lệ để chọn từ")
-    file_name = dspy.InputField(desc="Tên tệp bao gồm phần mở rộng")
-    file_content = dspy.InputField(desc="Nội dung thực tế của tệp để phân loại")
+    category_ids = dspy.InputField(desc="List of valid category IDs to choose from")
+    file_name = dspy.InputField(desc="File name including extension")
+    file_content = dspy.InputField(desc="Actual content of the file to be classified")
 
     # Output fields
-    category_id = dspy.OutputField(desc="ID danh mục phù hợp nhất từ category_ids")
+    category_id = dspy.OutputField(desc="The most appropriate category ID from category_ids")
     confidence = dspy.OutputField(
-        desc="Độ tin cậy từ 0.0 đến 5.0 (số thực)", type=float
+        desc="Confidence score from 0.0 to 5.0 (float)", type=float
     )
-    reason = dspy.OutputField(desc="Lý do ngắn gọn cho việc phân loại")
+    reason = dspy.OutputField(desc="Short reason for the classification")
 
 
 class FileExtractMetadata(dspy.Signature):
     """
-    Trích xuất các trường metadata được yêu cầu từ nội dung tệp.
-    Mô hình chỉ tập trung suy luận và điền giá trị cho các trường metadata
-    dựa trên nội dung thực tế của tệp.
+    Extract requested metadata fields from the file content.
+    The model should focus on inferring and filling in values for metadata fields
+    based on the actual content of the file.
     """
 
     # Input fields
     file_content = dspy.InputField(
-        desc="Nội dung thực tế của tệp (text đã được parse) dùng để trích xuất metadata"
+        desc="Actual content of the file (parsed text) used to extract metadata"
     )
     metadata = dspy.InputField(
-        desc="Danh sách hoặc schema mô tả các trường metadata cần được trích xuất"
+        desc="List or schema describing the metadata fields to be extracted"
     )
 
     # Output fields
     extracted_metadata = dspy.OutputField(
         desc=(
-            "Giá trị metadata đã được trích xuất tương ứng với các trường được yêu cầu, "
-            "trả về đúng cấu trúc của metadata đầu vào"
+            "Extracted metadata values corresponding to the requested fields, "
+            "returning the exact structure of the input metadata"
         ),
         type=dict,
     )
