@@ -47,7 +47,7 @@ class MarkitdownReader(DocumentReader):
         """Extract text from the first N pages of the document."""
         extension = Path(file_path).suffix.lower()
         if extension != ".pdf":
-            return "" # read_pages is only for PDF-specific sliding window extraction
+            return self.read_full_document(file_path)
         return self._extractor.read_pages(str(file_path), max_pages)
 
     def read_full_document(self, file_path: Path) -> str:
