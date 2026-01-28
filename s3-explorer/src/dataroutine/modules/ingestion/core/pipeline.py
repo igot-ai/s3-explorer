@@ -19,6 +19,7 @@ from dataroutine.modules.ingestion.core.models import (
 )
 from dataroutine.modules.ingestion.core.processors.base import FileProcessorChain
 from dataroutine.modules.ingestion.core.readers.base import DocumentReader
+from dataroutine.modules.ingestion.env import INGESTION_TASK_QUEUE
 from dataroutine.shared._logging import get_logger
 
 logger = get_logger(__name__)
@@ -518,7 +519,7 @@ class IngestionPipeline:
                     args=[child_params],
                     id=f"ingest-folder-{uuid.uuid4()}",
                     parent_close_policy=ParentClosePolicy.ABANDON,
-                    task_queue=getattr(workflow, "INGESTION_TASK_QUEUE", "ingestion-task-queue"),
+                    task_queue=INGESTION_TASK_QUEUE,
                     retry_policy=retry_policy
                 )
                 handles.append(handle)

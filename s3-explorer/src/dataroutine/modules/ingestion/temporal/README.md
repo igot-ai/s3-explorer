@@ -121,7 +121,7 @@ python consumer.py ingestion
 ## Task Queue
 
 The default task queue is defined in:
-- `dataroutine.modules.ingestion.temporal.workflows.INGESTION_TASK_QUEUE`
+- `dataroutine.modules.ingestion.env.INGESTION_TASK_QUEUE`
 - Also available as `igotapi.const.INGESTION_PIPELINE_TASK_QUEUE`
 
 ## Decoupling Design

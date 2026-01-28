@@ -238,8 +238,8 @@ async def _run_ingestion_pipeline_async(
     """
     import uuid
 
+    from dataroutine.modules.ingestion.env import INGESTION_TASK_QUEUE
     from dataroutine.modules.ingestion.temporal.models import IngestionJobParams
-    from dataroutine.modules.ingestion.temporal.workflows import INGESTION_TASK_QUEUE
     from dataroutine.shared.temporal_client import get_temporal_client
 
     task_id = task_id or str(uuid.uuid4())

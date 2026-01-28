@@ -23,7 +23,8 @@ from temporalio.client import Client
 from temporalio.worker import Worker
 
 from dataroutine.shared._logging import get_logger
-from dataroutine.modules.ingestion.temporal.workflows import IngestionPipelineWorkflow, INGESTION_TASK_QUEUE
+from dataroutine.modules.ingestion.env import INGESTION_TASK_QUEUE
+from dataroutine.modules.ingestion.temporal.workflows import IngestionPipelineWorkflow
 from dataroutine.modules.ingestion.temporal.activities import run_ingestion_pipeline_activity
 
 logger = get_logger(__name__)

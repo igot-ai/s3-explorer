@@ -45,3 +45,6 @@ READER_TYPE = _load_optional_env("READER_TYPE", "markitdown")
 TEMP_DIR = _load_optional_env("TEMP_DIR", "tmp")
 API_BASE_URL = _load_optional_env("API_BASE_URL", "http://localhost:8000/v1/catalog")
 DATALOG_AUTH_TOKEN = _load_optional_env("DATALOG_AUTH_TOKEN", "")
+
+# Temporal
+INGESTION_TASK_QUEUE = _load_optional_env("INGESTION_TASK_QUEUE", "transform-catalog-task-queue")
