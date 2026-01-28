@@ -71,7 +71,6 @@ class IngestionWrapper:
         source_path: str,
         workspace_id: str,
         project_id: str,
-        auth_token: str,
         catalogs: List[Dict[str, Any]],
         task_id: Optional[str] = None,
         storage_provider: str = "aws",
@@ -82,6 +81,7 @@ class IngestionWrapper:
         temp_dir: Optional[str] = TEMP_DIR,
         api_base_url: Optional[str] = API_BASE_URL,
         user_id: Optional[str] = None,
+        **kwargs,
     ) -> IngestionTaskResult:
         """Trigger an ingestion pipeline job.
 
@@ -89,7 +89,6 @@ class IngestionWrapper:
             source_path: S3 path to process (e.g., "raw-documents/")
             workspace_id: Workspace ID for data collection API
             project_id: Project ID for data collection API
-            auth_token: Authentication token for API calls
             catalogs: List of catalog configurations, each with:
                 - id: Catalog ID
                 - instruction: Classification instruction for LLM
@@ -114,7 +113,6 @@ class IngestionWrapper:
                 source_path=source_path,
                 workspace_id=workspace_id,
                 project_id=project_id,
-                auth_token=auth_token,
                 catalogs=catalogs,
                 task_id=task_id,
                 storage_provider=storage_provider,
@@ -222,7 +220,6 @@ async def _run_ingestion_pipeline_async(
     source_path: str,
     workspace_id: str,
     project_id: str,
-    auth_token: str,
     catalogs: List[Dict[str, Any]],
     task_id: Optional[str] = None,
     storage_provider: str = "aws",
@@ -255,7 +252,6 @@ async def _run_ingestion_pipeline_async(
             source_path=source_path,
             workspace_id=workspace_id,
             project_id=project_id,
-            auth_token=auth_token,
             catalogs=catalogs,
             task_id=task_id,
             storage_provider=storage_provider,

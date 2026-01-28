@@ -88,7 +88,6 @@ def _create_pipeline(params: IngestionJobParams, collection_handler: CollectionH
             base_url=params.api_base_url or os.getenv("API_BASE_URL"),
             workspace_id=params.workspace_id,
             project_id=params.project_id,
-            auth_token=params.auth_token,
         )
 
     def on_file_processed(file_ctx: FileContext):  # Progress callback
@@ -122,7 +121,7 @@ def _build_job_config(params: IngestionJobParams) -> IngestionJobConfig:
     Returns:
         IngestionJobConfig instance
     """
-    source_path = params.source_path.rstrip("/") if params.source_path else ""
+    source_path = params.source_path if params.source_path is not None else ""
     catalogs = [
         Catalog(
             id=cat["id"],
@@ -246,7 +245,9 @@ async def discover_folders_activity(params: IngestionJobParams) -> Dict[str, Any
         source_connector = S3SourceConnector(storage_provider)
 
         # 2. List folders
-        prefix = params.source_path.rstrip("/") + "/"
+        prefix = params.source_path
+        if prefix and not prefix.endswith("/"):
+            prefix += "/"
         folders = source_connector.list_folders(prefix=prefix)
         total_folders = len(folders)
 

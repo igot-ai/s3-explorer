@@ -36,7 +36,6 @@ class TestRunIngestionEndpoint:
                     "source_path": "test/",
                     "workspace_id": "ws-123",
                     "project_id": "proj-456",
-                    "auth_token": "token-789",
                 },
                 "catalogs": [
                     {"id": "cat1", "instruction": "Test", "fetch_all_metadata": False}
@@ -72,7 +71,6 @@ class TestRunIngestionEndpoint:
                     "source_path": "test/",
                     "workspace_id": "ws-123",
                     "project_id": "proj-456",
-                    "auth_token": "token-789",
                 },
                 "catalogs": [{"id": "cat1", "instruction": "Test"}],
             },
@@ -90,7 +88,7 @@ class TestRunIngestionEndpoint:
             json={
                 "config": {
                     "source_path": "test/",
-                    # Missing workspace_id, project_id, auth_token
+                    # Missing workspace_id, project_id
                 },
                 "catalogs": [{"id": "cat1", "instruction": "Test"}],
             },

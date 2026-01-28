@@ -10,6 +10,7 @@ from dataroutine.modules.ingestion.core.models import (
     IngestionJobConfig,
     PipelineResult,
 )
+from dataroutine.modules.ingestion.temporal.models import IngestionJobParams
 
 
 class TestCatalog:
@@ -161,10 +162,20 @@ class TestIngestionJobConfig:
         assert config.recursive is True
 
     def test_job_config_validation_empty_source(self):
-        """Test that empty source_path raises ValueError."""
+        """Test that empty source_path is now allowed."""
         catalog = Catalog(id="test", instruction="Test")
-        with pytest.raises(ValueError, match="source_path cannot be empty"):
-            IngestionJobConfig(source_path="", catalogs=[catalog])
+        # Should not raise ValueError
+        config = IngestionJobConfig(source_path="", catalogs=[catalog])
+        assert config.source_path == ""
+
+    def test_job_params_default_source(self):
+        """Test that IngestionJobParams defaults source_path to empty string."""
+        params = IngestionJobParams(
+            workspace_id="ws",
+            project_id="proj",
+        )
+        assert params.source_path == ""
+        assert params.to_dict()["source_path"] == ""
 
     def test_job_config_validation_no_catalogs(self):
         """Test that no catalogs raises ValueError."""

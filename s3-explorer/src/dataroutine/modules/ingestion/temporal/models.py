@@ -71,7 +71,6 @@ class IngestionJobParams:
         source_path: S3 path to process (e.g., "raw-documents/")
         workspace_id: Workspace ID for data collection API
         project_id: Project ID for data collection API
-        auth_token: Authentication token for API calls
         catalogs: List of catalog configurations for classification
         task_id: Unique task identifier for tracking
         storage_provider: Storage provider type (aws, cloudflare, etc.)
@@ -84,10 +83,9 @@ class IngestionJobParams:
         user_id: Optional user ID who initiated the job
     """
 
-    source_path: str
     workspace_id: str
     project_id: str
-    auth_token: str
+    source_path: str = ""
     catalogs: List[Dict[str, Any]] = field(default_factory=list)
     task_id: str = ""
     storage_provider: str = "aws"
@@ -124,7 +122,6 @@ class IngestionJobParams:
             "source_path": self.source_path,
             "workspace_id": self.workspace_id,
             "project_id": self.project_id,
-            "auth_token": self.auth_token,
             "catalogs": self.catalogs,
             "task_id": self.task_id,
             "storage_provider": self.storage_provider,
@@ -161,10 +158,9 @@ class IngestionJobParams:
     def from_dict(cls, data: Dict[str, Any]) -> "IngestionJobParams":
         """Create from dictionary."""
         return cls(
-            source_path=data["source_path"],
+            source_path=data.get("source_path", ""),
             workspace_id=data["workspace_id"],
             project_id=data["project_id"],
-            auth_token=data["auth_token"],
             catalogs=data.get("catalogs", []),
             task_id=data.get("task_id", ""),
             storage_provider=data.get("storage_provider", "aws"),

@@ -70,7 +70,7 @@ class IngestionConfigSchema(Schema):
 
     # Source settings
     source_path = fields.Str(
-        required=True, metadata={"description": "S3 source path to process"}
+        load_default="", metadata={"description": "S3 source path to process"}
     )
     recursive = fields.Bool(
         load_default=True, metadata={"description": "Process subfolders recursively"}
@@ -118,10 +118,6 @@ class IngestionConfigSchema(Schema):
     project_id = fields.Str(
         load_default=None,
         metadata={"description": "Project ID for API handler (required)"},
-    )
-    auth_token = fields.Str(
-        load_default=None,
-        metadata={"description": "Auth token for API handler (required)"},
     )
 
 

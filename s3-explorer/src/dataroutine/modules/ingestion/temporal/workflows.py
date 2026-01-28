@@ -73,7 +73,6 @@ class IngestionPipelineWorkflow:
             source_path="raw-documents/",
             workspace_id="...",
             project_id="...",
-            auth_token="...",
             catalogs=[{"id": "legal", "instruction": "Legal documents"}],
         )
         

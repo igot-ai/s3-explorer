@@ -34,18 +34,18 @@ def run_ingestion(
         config = request.config
 
         # Validate required fields
-        if not config.workspace_id or not config.project_id or not config.auth_token:
+        if not config.workspace_id or not config.project_id:
             raise HTTPException(
                 status_code=400,
                 detail={
                     "success": False,
                     "message": "Missing required API handler settings",
-                    "errors": ["workspace_id, project_id, and auth_token are required"],
+                    "errors": ["workspace_id and project_id are required"],
                 },
             )
 
-        # Normalize source path (remove trailing slash)
-        source_path = config.source_path.rstrip("/") if config.source_path else ""
+        # Normalize source path (preserve if not None)
+        source_path = config.source_path if config.source_path is not None else ""
 
         # Filter out None values from storage credentials
         if isinstance(config.storage_credentials, dict):
@@ -68,7 +68,6 @@ def run_ingestion(
             source_path=source_path,
             workspace_id=config.workspace_id,
             project_id=config.project_id,
-            auth_token=config.auth_token,
             catalogs=catalogs,
             task_id=config.task_id,
             storage_provider=config.storage_provider,

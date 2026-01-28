@@ -67,7 +67,6 @@ response = run_ingestion_pipeline(
     source_path="raw-documents/legal/",
     workspace_id="ws-123",
     project_id="proj-456",
-    auth_token="token-789",
     catalogs=[
         {
             "id": "legal-contracts",
@@ -99,7 +98,6 @@ params = IngestionJobParams(
     source_path="raw-documents/",
     workspace_id="ws-123",
     project_id="proj-456",
-    auth_token="token-789",
     catalogs=[{"id": "cat1", "instruction": "Test"}],
     storage_credentials={"access_key": "...", "secret_key": "...", "bucket": "..."},
 )

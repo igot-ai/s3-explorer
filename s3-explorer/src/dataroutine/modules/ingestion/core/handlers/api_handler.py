@@ -9,7 +9,7 @@ from typing import Any, BinaryIO, Dict, Optional
 
 from dataroutine.modules.ingestion.core.handlers.base import APICollectionHandler
 from dataroutine.modules.ingestion.core.models import Catalog, FileContext, FolderContext
-from dataroutine.modules.ingestion.env import API_BASE_URL
+from dataroutine.modules.ingestion.env import API_BASE_URL, DATALOG_AUTH_TOKEN
 from dataroutine.modules.ingestion.services.datalog import DatalogService
 from dataroutine.shared._logging import get_logger
 
@@ -25,7 +25,7 @@ class DataCollectionAPIHandler(APICollectionHandler):
 
     def __init__(
         self,
-        auth_token: str,
+        auth_token: Optional[str] = None,
         base_url: str = API_BASE_URL,
         workspace_id: str = "default",
         project_id: Optional[str] = None,
@@ -33,16 +33,19 @@ class DataCollectionAPIHandler(APICollectionHandler):
         """Initialize Datalog collection handler.
 
         Args:
-            auth_token: Datalog authentication token
+            auth_token: Datalog authentication token (if None, uses DATALOG_AUTH_TOKEN env)
             base_url: Base URL of the Datalog API (default: API_BASE_URL)
             workspace_id: Workspace ID for creating projects (default: "default")
             project_id: Optional existing project ID to use (creates new if not provided)
         """
-        self.auth_token = auth_token
+        self.auth_token = auth_token or DATALOG_AUTH_TOKEN
+        if not self.auth_token:
+            logger.warning("No auth_token provided and DATALOG_AUTH_TOKEN env not set")
+
         self.base_url = base_url
         self.workspace_id = workspace_id
         self.project_id = project_id
-        self._service = DatalogService(auth_token=auth_token, base_url=base_url)
+        self._service = DatalogService(auth_token=self.auth_token, base_url=base_url)
         self._authenticated = True  # Token-based auth is always "authenticated"
 
     def __del__(self):

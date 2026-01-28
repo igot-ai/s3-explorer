@@ -81,7 +81,6 @@ Triggers a new ingestion job.
     },
     "workspace_id": "ws_123456",
     "project_id": "proj_987654",
-    "auth_token": "datalog_api_token",
     "recursive": true
   },
   "catalogs": [

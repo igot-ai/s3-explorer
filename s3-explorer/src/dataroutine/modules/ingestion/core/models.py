@@ -134,8 +134,8 @@ class IngestionJobConfig:
 
     def __post_init__(self):
         """Validate job configuration."""
-        if not self.source_path:
-            raise ValueError("source_path cannot be empty")
+        if self.source_path is None:
+            raise ValueError("source_path cannot be None")
         if not self.catalogs:
             raise ValueError("At least one catalog must be provided")
         if self.pages_to_read < 1:

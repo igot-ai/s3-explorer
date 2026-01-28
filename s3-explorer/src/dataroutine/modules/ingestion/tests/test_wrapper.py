@@ -38,7 +38,6 @@ class TestIngestionWrapper:
             source_path="test/path",
             workspace_id="ws-1",
             project_id="proj-1",
-            auth_token="token",
             catalogs=[{"id": "cat-1", "instruction": "instr"}]
         )
         
@@ -63,7 +62,6 @@ class TestIngestionWrapper:
             source_path="test/path",
             workspace_id="ws-1",
             project_id="proj-1",
-            auth_token="token",
             catalogs=[]
         )
         

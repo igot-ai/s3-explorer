@@ -53,7 +53,6 @@ class TestActivityHelpers:
             source_path="test/",
             workspace_id="ws",
             project_id="proj",
-            auth_token="token",
             catalogs=[{"id": "cat1", "instruction": "Test"}],
             api_base_url="http://api.example.com",
             storage_provider="aws",
@@ -83,7 +82,6 @@ class TestActivityHelpers:
             source_path="test/",
             workspace_id="ws",
             project_id="proj",
-            auth_token="token",
             catalogs=[
                 {"id": "cat1", "instruction": "Test", "fetch_all_metadata": False}
             ],
@@ -92,7 +90,7 @@ class TestActivityHelpers:
         )
 
         config = _build_job_config(params)
-        assert config.source_path == "test"
+        assert config.source_path == "test/"
         assert config.recursive is True
         assert config.pages_to_read == 5
         assert len(config.catalogs) == 1
@@ -146,7 +144,6 @@ class TestRunIngestionPipelineActivity:
             source_path="test/",
             workspace_id="ws",
             project_id="proj",
-            auth_token="token",
             catalogs=[{"id": "cat1", "instruction": "Test"}],
             task_id="task-123",
             api_base_url="http://api.example.com",
@@ -187,7 +184,6 @@ class TestRunIngestionPipelineActivity:
             source_path="test/",
             workspace_id="ws",
             project_id="proj",
-            auth_token="token",
             catalogs=[{"id": "cat1", "instruction": "Test"}],
             task_id="task-123",
         )
@@ -207,7 +203,6 @@ class TestRunIngestionPipelineActivity:
             source_path="test/",
             workspace_id="ws",
             project_id="proj",
-            auth_token="token",
             catalogs=[{"id": "cat1", "instruction": "Test"}],
             task_id="",  # Empty task_id
         )
@@ -253,7 +248,6 @@ class TestRunIngestionPipelineActivity:
             source_path="test/",
             workspace_id="ws",
             project_id="proj",
-            auth_token="token",
             task_id="task-123",
         )
 
@@ -278,7 +272,6 @@ class TestRunIngestionPipelineActivity:
             source_path="test/",
             workspace_id="ws",
             project_id="proj",
-            auth_token="token",
             catalogs=[{"id": "cat1", "instruction": "Test"}],
         )
 
@@ -309,7 +302,6 @@ class TestRunIngestionPipelineActivity:
             source_path="test/",
             workspace_id="ws",
             project_id="proj",
-            auth_token="token",
             catalogs=[{"id": "cat1", "instruction": "Test"}],
         )
         mock_provider = Mock()

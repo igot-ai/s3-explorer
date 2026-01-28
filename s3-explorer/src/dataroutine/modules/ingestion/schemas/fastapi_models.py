@@ -53,7 +53,7 @@ class StorageCredentialsModel(BaseModel):
 class IngestionConfigModel(BaseModel):
     """Model for ingestion pipeline configuration."""
 
-    source_path: str = Field(..., description="S3 source path to process")
+    source_path: str = Field(default="", description="S3 source path to process")
     recursive: bool = Field(default=True, description="Process subfolders recursively")
     pages_to_read: int = Field(
         default=3, ge=1, description="Number of pages to read from each document"
@@ -78,9 +78,6 @@ class IngestionConfigModel(BaseModel):
     )
     project_id: Optional[str] = Field(
         default=None, description="Project ID for API handler (required)"
-    )
-    auth_token: Optional[str] = Field(
-        default=None, description="Auth token for API handler (required)"
     )
     task_id: Optional[str] = Field(default=None, description="Optional task identifier")
     user_id: Optional[str] = Field(

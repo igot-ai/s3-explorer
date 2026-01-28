@@ -46,23 +46,18 @@ def run_ingestion():
             for k, v in config_data.get("storage_credentials", {}).items()
             if v is not None
         }
-        source_path = (
-            config_data["source_path"][:-1]
-            if config_data["source_path"] and config_data["source_path"].endswith("/")
-            else config_data["source_path"]
-        )
+        source_path = config_data.get("source_path", "")
 
         workspace_id = config_data.get("workspace_id")
         project_id = config_data.get("project_id")
-        auth_token = config_data.get("auth_token")
-        if not workspace_id or not project_id or not auth_token:
+        if not workspace_id or not project_id:
             return (
                 jsonify(
                     {
                         "success": False,
                         "message": "Missing required API handler settings",
                         "errors": [
-                            "workspace_id, project_id, and auth_token are required"
+                            "workspace_id and project_id are required"
                         ],
                     }
                 ),
@@ -90,7 +85,6 @@ def run_ingestion():
             source_path=source_path,
             workspace_id=workspace_id,
             project_id=project_id,
-            auth_token=auth_token,
             catalogs=catalogs,
             task_id=config_data.get("task_id") or "",
             storage_provider=config_data.get("storage_provider", "aws"),
