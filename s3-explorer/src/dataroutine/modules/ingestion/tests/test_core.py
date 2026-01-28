@@ -62,13 +62,14 @@ class TestIngestionPipeline:
         assert pipeline.on_file_processed == file_callback
         assert pipeline.on_folder_completed == folder_callback
 
-    def test_pipeline_run_empty_folders(self, mock_components, sample_config):
+    @pytest.mark.asyncio
+    async def test_pipeline_run_empty_folders(self, mock_components, sample_config):
         """Test pipeline with no folders."""
         mock_components["source_connector"].list_folders.return_value = []
         mock_components["source_connector"].walk_folder.return_value = []
 
         pipeline = IngestionPipeline(**mock_components)
-        result = pipeline.run(sample_config)
+        result = await pipeline.run(sample_config)
 
         assert isinstance(result, PipelineResult)
         assert result.total_folders == 0
@@ -76,7 +77,8 @@ class TestIngestionPipeline:
         assert result.successful == 0
         assert result.failed == 0
 
-    def test_pipeline_run_with_files(self, mock_components, sample_config):
+    @pytest.mark.asyncio
+    async def test_pipeline_run_with_files(self, mock_components, sample_config):
         """Test pipeline end-to-end happy path for a single file."""
         mock_components["source_connector"].list_folders.return_value = ["folder1/"]
 
@@ -100,14 +102,15 @@ class TestIngestionPipeline:
         mock_components["collection_handler"].upload.return_value = "asset-123"
 
         pipeline = IngestionPipeline(**mock_components)
-        result = pipeline.run(sample_config)
+        result = await pipeline.run(sample_config)
 
         assert result.total_folders == 1
         assert result.total_files == 1
         assert result.successful == 1
         assert result.failed == 0
 
-    def test_pipeline_handles_errors(self, mock_components, sample_config):
+    @pytest.mark.asyncio
+    async def test_pipeline_handles_errors(self, mock_components, sample_config):
         """Test pipeline handles file processing errors."""
         mock_components["source_connector"].list_folders.return_value = ["folder1/"]
 
@@ -118,14 +121,15 @@ class TestIngestionPipeline:
         )
 
         pipeline = IngestionPipeline(**mock_components)
-        result = pipeline.run(sample_config)
+        result = await pipeline.run(sample_config)
 
         # Should continue despite error
         assert isinstance(result, PipelineResult)
         assert result.total_files == 1
         assert result.failed == 1
 
-    def test_callbacks_invoked(self, mock_components, sample_config):
+    @pytest.mark.asyncio
+    async def test_callbacks_invoked(self, mock_components, sample_config):
         """Test that callbacks are invoked during processing."""
         file_callback = Mock()
         folder_callback = Mock()
@@ -150,7 +154,7 @@ class TestIngestionPipeline:
             on_folder_completed=folder_callback
         )
 
-        result = pipeline.run(sample_config)
+        result = await pipeline.run(sample_config)
 
         # Folder callback should be called once
         assert folder_callback.call_count == 1
@@ -158,7 +162,8 @@ class TestIngestionPipeline:
         assert file_callback.call_count == 1
         assert result.successful == 1
 
-    def test_metadata_aggregation(self, mock_components, sample_config):
+    @pytest.mark.asyncio
+    async def test_metadata_aggregation(self, mock_components, sample_config):
         """Test metadata aggregation for folders."""
         # Set catalog to fetch all metadata
         sample_config.catalogs[0].fetch_all_metadata = True
@@ -178,11 +183,41 @@ class TestIngestionPipeline:
         mock_components["collection_handler"].upload.return_value = "asset-123"
 
         pipeline = IngestionPipeline(**mock_components)
-        result = pipeline.run(sample_config)
+        result = await pipeline.run(sample_config)
 
         assert len(result.folder_contexts) == 1
         folder_ctx = result.folder_contexts[0]
         assert isinstance(folder_ctx, FolderContext)
+
+    @pytest.mark.asyncio
+    async def test_pipeline_run_with_folder_prefixes(self, mock_components, sample_config):
+        """Test pipeline run with specific folder prefixes."""
+        file_ctx1 = FileContext(source_path="prefix1/file1.pdf", file_type="pdf")
+        file_ctx2 = FileContext(source_path="prefix2/file2.pdf", file_type="pdf")
+
+        def walk_side_effect(prefix, recursive=True):
+            if prefix == "prefix1/":
+                return [file_ctx1]
+            if prefix == "prefix2/":
+                return [file_ctx2]
+            return []
+
+        mock_components["source_connector"].walk_folder.side_effect = walk_side_effect
+        mock_components["source_connector"].download_file.return_value = io.BytesIO(b"data")
+        mock_components["processor_chain"].process.side_effect = lambda fc, _td: [fc]
+        mock_components["document_reader"].can_read.return_value = True
+        mock_components["document_reader"].read_pages.return_value = "text"
+        mock_components["classifier"].classify.return_value = ClassificationResult(
+            category_id="test-catalog", confidence=3, reason="ok"
+        )
+        mock_components["collection_handler"].upload.return_value = "asset-1"
+
+        pipeline = IngestionPipeline(**mock_components)
+        result = await pipeline.run(sample_config, folder_prefixes=["prefix1/", "prefix2/"])
+
+        assert result.total_folders == 2
+        assert result.total_files == 2
+        assert mock_components["source_connector"].walk_folder.call_count == 2
 
     def test_extract_and_upload_dict_updates_metadata(
         self, mock_components, sample_config, tmp_path

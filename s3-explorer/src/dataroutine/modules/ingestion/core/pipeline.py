@@ -2,8 +2,10 @@
 
 import tempfile
 import time
+import asyncio
+import uuid
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Any, Dict
 
 from dataroutine.modules.ingestion.core.classifiers.base import Classifier
 from dataroutine.modules.ingestion.core.connectors.base import SourceConnector
@@ -30,11 +32,11 @@ class IngestionPipeline:
 
     def __init__(
         self,
-        source_connector: SourceConnector,
-        processor_chain: FileProcessorChain,
-        document_reader: DocumentReader,
-        classifier: Classifier,
-        collection_handler: CollectionHandler,
+        source_connector: Optional[SourceConnector] = None,
+        processor_chain: Optional[FileProcessorChain] = None,
+        document_reader: Optional[DocumentReader] = None,
+        classifier: Optional[Classifier] = None,
+        collection_handler: Optional[CollectionHandler] = None,
         on_file_processed: Optional[Callable[[FileContext], None]] = None,
         on_folder_completed: Optional[Callable[[FolderContext], None]] = None,
     ):
@@ -57,15 +59,25 @@ class IngestionPipeline:
         self.on_file_processed = on_file_processed
         self.on_folder_completed = on_folder_completed
 
-    def run(self, config: IngestionJobConfig) -> PipelineResult:
+    async def run(
+        self,
+        config: IngestionJobConfig,
+        workflow=None,
+        folder_prefixes: Optional[List[str]] = None,
+    ) -> PipelineResult:
         """Execute the full ingestion pipeline.
 
         Args:
             config: Job configuration
+            workflow: Optional Temporal workflow module for orchestration
+            folder_prefixes: Optional list of folder prefixes to process
 
         Returns:
             PipelineResult with summary statistics
         """
+        if workflow:
+            return await self._run_temporal_orchestration(config, workflow)
+
         start_time = time.time()
         folder_contexts = []
 
@@ -73,25 +85,22 @@ class IngestionPipeline:
         logger.info(f"Processing with {len(config.catalogs)} catalogs")
 
         # Phase 0: Discovery - collect all files to process
-        logger.info(f"Phase 0: Discovering files in {config.source_path}")
-        all_discovered_files = list(
-            self.source.walk_folder(config.source_path, recursive=config.recursive)
-        )
+        if folder_prefixes:
+            logger.info(f"Phase 0: Discovering files in {len(folder_prefixes)} specific prefixes")
+            all_discovered_files = []
+            for prefix in folder_prefixes:
+                all_discovered_files.extend(
+                    list(self.source.walk_folder(prefix, recursive=config.recursive))
+                )
+        else:
+            logger.info(f"Phase 0: Discovering files in {config.source_path}")
+            all_discovered_files = list(
+                self.source.walk_folder(config.source_path, recursive=config.recursive)
+            )
+
         logger.info(f"Found {len(all_discovered_files)} total files to process")
 
-        files_by_folder: dict[str, List[FileContext]] = {}
-        for file_ctx in all_discovered_files:
-            path_obj = Path(file_ctx.source_path)
-            parent = str(path_obj.parent).replace("\\", "/")
-            if parent == "." or not parent:
-                parent = config.source_path.rstrip("/") or "/"
-            if not parent.endswith("/"):
-                parent += "/"
-
-            if parent not in files_by_folder:
-                files_by_folder[parent] = []
-            files_by_folder[parent].append(file_ctx)
-
+        files_by_folder = self._group_files_by_folder(all_discovered_files, config)
         logger.info(f"Grouped into {len(files_by_folder)} folder-based batches")
 
         for folder_path, all_files in files_by_folder.items():
@@ -405,4 +414,139 @@ class IngestionPipeline:
             failed=failed,
             folder_contexts=folder_contexts,
             execution_time_seconds=execution_time,
+        )
+
+    def _group_files_by_folder(
+        self, all_discovered_files: List[FileContext], config: IngestionJobConfig
+    ) -> dict[str, List[FileContext]]:
+        """Group discovered files by their parent folder.
+
+        Args:
+            all_discovered_files: List of discovered file contexts
+            config: Job configuration
+
+        Returns:
+            Dictionary mapping folder paths to lists of file contexts
+        """
+        files_by_folder: dict[str, List[FileContext]] = {}
+        for file_ctx in all_discovered_files:
+            path_obj = Path(file_ctx.source_path)
+            parent = str(path_obj.parent).replace("\\", "/")
+            if parent == "." or not parent:
+                parent = config.source_path.rstrip("/") or "/"
+            if not parent.endswith("/"):
+                parent += "/"
+
+            if parent not in files_by_folder:
+                files_by_folder[parent] = []
+            files_by_folder[parent].append(file_ctx)
+        return files_by_folder
+
+    async def _run_temporal_orchestration(self, config: IngestionJobConfig, workflow) -> PipelineResult:
+        """Orchestrate processing via Temporal child workflows and continue-as-new.
+
+        Args:
+            config: Ingestion job configuration
+            workflow: Temporal workflow module
+
+        Returns:
+            PipelineResult (partial or final)
+        """
+        from datetime import timedelta
+        from temporalio.common import RetryPolicy
+        from temporalio.workflow import ParentClosePolicy
+
+        # Configuration for scalability (can be moved to config later)
+        FILES_PER_CONTINUE = getattr(config, "folders_per_continue", 50)
+        MAX_PARALLEL_CHILD_WORKFLOWS = 25
+        retry_policy = RetryPolicy(maximum_attempts=3, initial_interval=timedelta(seconds=1))
+
+        # We assume config has been augmented with temporal params if called this way
+        params = getattr(config, "temporal_params", None)
+        if not params:
+            raise ValueError("Temporal params missing in config for orchestration")
+
+        # 1. Discovery Phase
+        if not params.folders_cache_key:
+            discovery_res = await workflow.execute_activity(
+                "discover_folders_activity",
+                args=[params],
+                start_to_close_timeout=timedelta(minutes=10),
+                retry_policy=retry_policy
+            )
+            params.folders_cache_key = discovery_res["cache_key"]
+            params.folders_total = discovery_res["total_folders"]
+
+        # 2. Check if completed
+        if params.start_index >= params.folders_total:
+            return PipelineResult(
+                total_folders=params.folders_total,
+                total_files=params.acc_total_files,
+                successful=params.acc_successful,
+                failed=params.acc_failed,
+                folder_contexts=[],
+                execution_time_seconds=0.0
+            )
+
+        # 3. Process Batch
+        end_index = min(params.start_index + FILES_PER_CONTINUE, params.folders_total)
+        
+        for i in range(params.start_index, end_index, MAX_PARALLEL_CHILD_WORKFLOWS):
+            batch_end = min(i + MAX_PARALLEL_CHILD_WORKFLOWS, end_index)
+            
+            # Fetch folder batch
+            folders_batch = await workflow.execute_activity(
+                "fetch_folders_batch_from_cache",
+                args=[params, params.folders_cache_key, i, batch_end],
+                start_to_close_timeout=timedelta(minutes=5),
+                retry_policy=retry_policy
+            )
+            
+            # Start Child Workflows for each folder
+            handles = []
+            for folder_prefix in folders_batch:
+                # Prepare params for child workflow (single folder)
+                child_params = params.copy_with(
+                    source_path=folder_prefix,
+                    recursive=False,  # Process only this folder
+                    start_index=0,    # Reset for child
+                    folders_cache_key="", # No cache for child
+                )
+                
+                handle = await workflow.start_child_workflow(
+                    "FolderIngestionWorkflow",
+                    args=[child_params],
+                    id=f"ingest-folder-{uuid.uuid4()}",
+                    parent_close_policy=ParentClosePolicy.ABANDON,
+                    task_queue=getattr(workflow, "INGESTION_TASK_QUEUE", "ingestion-task-queue"),
+                    retry_policy=retry_policy
+                )
+                handles.append(handle)
+            
+            # Wait for all folder child workflows in this sub-batch
+            batch_results = await asyncio.gather(*handles, return_exceptions=True)
+            
+            # Accumulate results
+            for res in batch_results:
+                if isinstance(res, Exception):
+                    logger.error(f"Child workflow failed: {res}")
+                    params.acc_failed += 1 # Or more granular error tracking
+                elif isinstance(res, dict):
+                    params.acc_successful += res.get("successful", 0)
+                    params.acc_failed += res.get("failed", 0)
+                    params.acc_total_files += res.get("total_files", 0)
+
+        params.start_index = end_index
+
+        # 4. Continue As New
+        if params.start_index < params.folders_total:
+            await workflow.continue_as_new(params)
+        
+        return PipelineResult(
+            total_folders=params.folders_total,
+            total_files=params.acc_total_files,
+            successful=params.acc_successful,
+            failed=params.acc_failed,
+            folder_contexts=[],
+            execution_time_seconds=0.0
         )

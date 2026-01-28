@@ -98,6 +98,13 @@ class IngestionJobParams:
     reader_type: Optional[str] = READER_TYPE
     api_base_url: Optional[str] = API_BASE_URL
     user_id: Optional[str] = None
+    start_index: int = 0  # Continuation start index
+    folders_cache_key: str = ""  # Cache key for discovered folders
+    folders_total: int = 0  # Total folders to process
+    folders_per_continue: int = 50  # Batch size for continue-as-new
+    acc_successful: int = 0  # Accumulated successful files
+    acc_failed: int = 0  # Accumulated failed files
+    acc_total_files: int = 0  # Accumulated total files
 
     def __post_init__(self):
         if self.reader_type is None:
@@ -128,7 +135,27 @@ class IngestionJobParams:
             "temp_dir": self.temp_dir,
             "api_base_url": self.api_base_url,
             "user_id": self.user_id,
+            "start_index": self.start_index,
+            "folders_cache_key": self.folders_cache_key,
+            "folders_total": self.folders_total,
+            "folders_per_continue": self.folders_per_continue,
+            "acc_successful": self.acc_successful,
+            "acc_failed": self.acc_failed,
+            "acc_total_files": self.acc_total_files,
         }
+
+    def copy_with(self, **kwargs) -> "IngestionJobParams":
+        """Create a copy of params with updated values.
+
+        Args:
+            **kwargs: Fields to update
+
+        Returns:
+            New IngestionJobParams instance
+        """
+        data = self.to_dict()
+        data.update(kwargs)
+        return self.from_dict(data)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "IngestionJobParams":
@@ -148,6 +175,13 @@ class IngestionJobParams:
             temp_dir=data.get("temp_dir"),
             api_base_url=data.get("api_base_url"),
             user_id=data.get("user_id"),
+            start_index=data.get("start_index", 0),
+            folders_cache_key=data.get("folders_cache_key", ""),
+            folders_total=data.get("folders_total", 0),
+            folders_per_continue=data.get("folders_per_continue", 50),
+            acc_successful=data.get("acc_successful", 0),
+            acc_failed=data.get("acc_failed", 0),
+            acc_total_files=data.get("acc_total_files", 0),
         )
 
 

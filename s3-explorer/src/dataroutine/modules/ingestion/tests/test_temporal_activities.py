@@ -7,13 +7,17 @@ the activity logic in isolation.
 
 import pytest
 import asyncio
-from unittest.mock import Mock, patch
+import io
+from unittest.mock import Mock, patch, ANY, AsyncMock
 
 from dataroutine.modules.ingestion.temporal.activities import (
     _build_job_config,
     _build_result,
     _create_pipeline,
     run_ingestion_pipeline_activity,
+    discover_folders_activity,
+    run_ingestion_folder_batch_activity,
+    delete_cache_key_activity,
 )
 from dataroutine.modules.ingestion.temporal.models import IngestionJobParams, IngestionResult
 
@@ -149,7 +153,7 @@ class TestRunIngestionPipelineActivity:
         )
 
         mock_pipeline = Mock()
-        mock_pipeline.run.return_value = Mock(
+        mock_pipeline.run = AsyncMock(return_value=Mock(
             total_folders=1,
             total_files=2,
             successful=2,
@@ -157,7 +161,7 @@ class TestRunIngestionPipelineActivity:
             folder_contexts=[],
             execution_time_seconds=10.0,
             get_success_rate=lambda: 100.0,
-        )
+        ))
         mock_create_pipeline.return_value = mock_pipeline
 
         mock_result = IngestionResult(
@@ -216,7 +220,7 @@ class TestRunIngestionPipelineActivity:
                     "dataroutine.modules.ingestion.temporal.activities._build_result"
                 ) as mock_result:
                     mock_pipeline = Mock()
-                    mock_pipeline.run.return_value = Mock(
+                    mock_pipeline.run = AsyncMock(return_value=Mock(
                         total_folders=0,
                         total_files=0,
                         successful=0,
@@ -224,7 +228,7 @@ class TestRunIngestionPipelineActivity:
                         folder_contexts=[],
                         execution_time_seconds=0.0,
                         get_success_rate=lambda: 0.0,
-                    )
+                    ))
                     mock_create.return_value = mock_pipeline
                     mock_result.return_value = IngestionResult(
                         success=True,
@@ -239,3 +243,79 @@ class TestRunIngestionPipelineActivity:
                     # Task ID should be generated (UUID format)
                     assert "task_id" in result_dict
                     assert len(result_dict["task_id"]) > 0
+
+    @pytest.mark.asyncio
+    @patch("dataroutine.modules.ingestion.temporal.activities.get_storage_provider")
+    @patch("dataroutine.modules.ingestion.temporal.activities.S3SourceConnector")
+    async def test_discover_folders_activity(self, mock_connector_cls, mock_get_provider):
+        """Test folder discovery activity."""
+        params = IngestionJobParams(
+            source_path="test/",
+            workspace_id="ws",
+            project_id="proj",
+            auth_token="token",
+            task_id="task-123",
+        )
+
+        mock_provider = Mock()
+        mock_get_provider.return_value = mock_provider
+        mock_connector = Mock()
+        mock_connector.list_folders.return_value = ["test/f1/", "test/f2/"]
+        mock_connector_cls.return_value = mock_connector
+
+        result = await discover_folders_activity(params)
+
+        assert result["total_folders"] == 2
+        assert "task-123" in result["cache_key"]
+        mock_provider.upload_file.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("dataroutine.modules.ingestion.temporal.activities.get_storage_provider")
+    @patch("dataroutine.modules.ingestion.temporal.activities._create_pipeline")
+    async def test_run_ingestion_folder_batch_activity(self, mock_create_pipeline, mock_get_provider):
+        """Test batch processing activity."""
+        params = IngestionJobParams(
+            source_path="test/",
+            workspace_id="ws",
+            project_id="proj",
+            auth_token="token",
+            catalogs=[{"id": "cat1", "instruction": "Test"}],
+        )
+
+        mock_provider = Mock()
+        mock_provider.download_file.return_value = io.BytesIO(b'["test/f1/", "test/f2/"]')
+        mock_get_provider.return_value = mock_provider
+
+        mock_pipeline = Mock()
+        mock_pipeline.run = AsyncMock(return_value=Mock(
+            total_files=5, successful=4, failed=1
+        ))
+        mock_create_pipeline.return_value = mock_pipeline
+
+        result = await run_ingestion_folder_batch_activity(params, "cache-key", 0, 1)
+
+        assert result["folders_processed"] == 1
+        assert result["files_processed"] == 5
+        assert result["successful"] == 4
+        assert result["failed"] == 1
+        assert result["next_index"] == 1
+        mock_pipeline.run.assert_called_once_with(ANY, folder_prefixes=["test/f1/"])
+
+    @pytest.mark.asyncio
+    @patch("dataroutine.modules.ingestion.temporal.activities.get_storage_provider")
+    async def test_delete_cache_key_activity(self, mock_get_provider):
+        """Test cache cleanup activity."""
+        params = IngestionJobParams(
+            source_path="test/",
+            workspace_id="ws",
+            project_id="proj",
+            auth_token="token",
+            catalogs=[{"id": "cat1", "instruction": "Test"}],
+        )
+        mock_provider = Mock()
+        mock_get_provider.return_value = mock_provider
+
+        success = await delete_cache_key_activity(params, "some-key")
+
+        assert success is True
+        mock_provider.delete_file.assert_called_once_with("some-key")
