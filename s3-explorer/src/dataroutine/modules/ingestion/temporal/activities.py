@@ -239,6 +239,9 @@ async def discover_folders_activity(params: IngestionJobParams) -> Dict[str, Any
     logger.info(f"Discovering folders for task_id: {task_id}")
 
     try:
+        if not params.source_path or params.source_path.strip("/") == "": 
+            raise ValueError("Scanning the root directory ('/') is not allowed to avoid expensive operations. Please specify a specific folder path.") 
+
         # 1. Setup connector
         storage_creds = {k: v for k, v in params.storage_credentials.items() if v is not None}
         storage_provider = get_storage_provider(params.storage_provider, **storage_creds)

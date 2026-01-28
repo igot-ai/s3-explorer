@@ -105,6 +105,8 @@ class IngestionJobParams:
     acc_total_files: int = 0  # Accumulated total files
 
     def __post_init__(self):
+        if not self.source_path:  # Ensure source_path is never null or empty, default to root "/"
+            self.source_path = "/"
         if self.reader_type is None:
             self.reader_type = READER_TYPE
         if self.temp_dir is None:

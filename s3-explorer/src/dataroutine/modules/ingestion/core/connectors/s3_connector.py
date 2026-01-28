@@ -133,6 +133,7 @@ class S3SourceConnector(SourceConnector):
                     source_path=file_name,
                     file_type=file_type,
                     status=FileStatus.PENDING,
+                    parent_folder=folder_path or "/",
                 )
 
             logger.debug(f"Walked folder '{folder_path}' successfully")

@@ -78,8 +78,7 @@ class S3CompatibleProvider(StorageProvider):
 
     def list_files(self, prefix: str = "") -> List[dict]:
         """List files and directories using s3fs"""
-        # When prefix is empty, use bucket/ to list contents (not bucket itself)
-        if prefix:
+        if prefix and prefix != "/":  # When prefix is empty or "/", use bucket/ to list contents (not bucket itself)
             s3_prefix = f"{self.bucket}/{prefix}"
         else:
             s3_prefix = f"{self.bucket}/"
@@ -196,9 +195,10 @@ class BackblazeB2Provider(StorageProvider):
         self.bucket.delete_file_version(file_version.id_, filename)
 
     def list_files(self, prefix: str = "") -> List[dict]:
+        b2_prefix = prefix if prefix and prefix != "/" else ""  # Normalize prefix: "/" or None/empty should be "" for B2
         return [
             {"name": f.file_name, "size": f.size}
-            for f in self.bucket.list_file_names(prefix)
+            for f in self.bucket.list_file_names(b2_prefix)
         ]
 
     def get_file_url(self, filename: str, expires_in: int = 3600) -> str:
@@ -311,9 +311,11 @@ class GoogleCloudStorageProvider(StorageProvider):
 
     def list_files(self, prefix: str = "") -> List[dict]:
         try:
+            gcs_prefix = prefix if prefix and prefix != "/" else ""  # Normalize prefix: "/" or None/empty should be "" for GCS
+
             # Use delimiter='/' to only get objects in the current level
             # This makes it non-recursive, matching S3 behavior.
-            blobs = self.bucket.list_blobs(prefix=prefix, delimiter="/")
+            blobs = self.bucket.list_blobs(prefix=gcs_prefix, delimiter="/")
 
             # 1. Collect files (blobs) at this level
             result = [
