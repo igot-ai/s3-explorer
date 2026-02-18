@@ -431,10 +431,14 @@ class IngestionPipeline:
         """
         files_by_folder: dict[str, List[FileContext]] = {}
         for file_ctx in all_discovered_files:
-            path_obj = Path(file_ctx.source_path)
-            parent = str(path_obj.parent).replace("\\", "/")
-            if parent == "." or not parent:
-                parent = config.source_path.rstrip("/") or "/"
+            if file_ctx.parent_folder:  # Use already assigned parent_folder if available
+                parent = file_ctx.parent_folder
+            else:
+                path_obj = Path(file_ctx.source_path)
+                parent = str(path_obj.parent).replace("\\", "/")
+                if parent == "." or not parent:
+                    parent = config.source_path.rstrip("/") or "/"
+            
             if not parent.endswith("/"):
                 parent += "/"
 

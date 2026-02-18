@@ -161,21 +161,23 @@ class TestIngestionJobConfig:
         assert config.pages_to_read == 3
         assert config.recursive is True
 
-    def test_job_config_validation_empty_source(self):
-        """Test that empty source_path is now allowed."""
+    def test_job_config_none_source_raises_error(self):
+        """Test that None source_path raises ValueError."""
         catalog = Catalog(id="test", instruction="Test")
-        # Should not raise ValueError
-        config = IngestionJobConfig(source_path="", catalogs=[catalog])
-        assert config.source_path == ""
+        with pytest.raises(ValueError, match="Scanning the root directory"):
+            IngestionJobConfig(source_path=None, catalogs=[catalog])
 
-    def test_job_params_default_source(self):
-        """Test that IngestionJobParams defaults source_path to empty string."""
-        params = IngestionJobParams(
-            workspace_id="ws",
-            project_id="proj",
-        )
-        assert params.source_path == ""
-        assert params.to_dict()["source_path"] == ""
+    def test_job_config_empty_source_raises_error(self):
+        """Test that empty source_path raises ValueError."""
+        catalog = Catalog(id="test", instruction="Test")
+        with pytest.raises(ValueError, match="Scanning the root directory"):
+            IngestionJobConfig(source_path="", catalogs=[catalog])
+
+    def test_job_config_root_source_raises_error(self):
+        """Test that root source_path raises ValueError."""
+        catalog = Catalog(id="test", instruction="Test")
+        with pytest.raises(ValueError, match="Scanning the root directory"):
+            IngestionJobConfig(source_path="/", catalogs=[catalog])
 
     def test_job_config_validation_no_catalogs(self):
         """Test that no catalogs raises ValueError."""

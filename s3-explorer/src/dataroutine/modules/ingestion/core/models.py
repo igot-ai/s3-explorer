@@ -134,8 +134,9 @@ class IngestionJobConfig:
 
     def __post_init__(self):
         """Validate job configuration."""
-        if self.source_path is None:
-            raise ValueError("source_path cannot be None")
+        if not self.source_path or self.source_path.strip("/") == "": 
+            raise ValueError("Scanning the root directory ('/') is not allowed to avoid expensive operations. Please specify a specific folder path.") 
+
         if not self.catalogs:
             raise ValueError("At least one catalog must be provided")
         if self.pages_to_read < 1:
