@@ -478,6 +478,23 @@ class IngestionPipeline:
             params.folders_cache_key = discovery_res["cache_key"]
             params.folders_total = discovery_res["total_folders"]
 
+            # Broadcast total folders discovered
+            await workflow.execute_activity(
+                "push_sse_event",
+                args=[{
+                    "task_id": getattr(params, "task_id", ""),
+                    "event_type": "ingestion_progress",
+                    "message": f"Discovered {params.folders_total} folders to process",
+                    "phase": "discovery",
+                    "progress": {
+                        "total_folders": params.folders_total,
+                        "processed_folders": 0
+                    }
+                }],
+                start_to_close_timeout=timedelta(seconds=10),
+                retry_policy=retry_policy
+            )
+
         # 2. Check if completed
         if params.start_index >= params.folders_total:
             return PipelineResult(
@@ -538,6 +555,26 @@ class IngestionPipeline:
                     params.acc_total_files += res.get("total_files", 0)
 
         params.start_index = end_index
+
+        # Broadcast progress/start before continue or return
+        await workflow.execute_activity(
+            "push_sse_event",
+            args=[{
+                "task_id": getattr(params, "task_id", ""),
+                "event_type": "ingestion_progress",
+                "message": "start",
+                "phase": "processing",
+                "progress": {
+                    "total_folders": params.folders_total,
+                    "processed_folders": params.start_index,
+                    "successful": params.acc_successful,
+                    "failed": params.acc_failed,
+                    "total_files": params.acc_total_files
+                }
+            }],
+            start_to_close_timeout=timedelta(seconds=10),
+            retry_policy=retry_policy
+        )
 
         # 4. Continue As New
         if params.start_index < params.folders_total:
